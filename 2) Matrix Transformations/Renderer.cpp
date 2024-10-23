@@ -2,6 +2,7 @@
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	triangle = Mesh::GenerateTriangle();
+	camera = new Camera();
 	matrixShader = new Shader("MatrixVertex.glsl", "ColourFragment.glsl");
 
 	if (!matrixShader->LoadSuccess()) {
@@ -45,4 +46,9 @@ void Renderer::RenderScene() {
 		glUniformMatrix4fv(glGetUniformLocation(matrixShader->GetProgram(), "modelMatrix"), 1, false, modelMatrix.values);
 		triangle->Draw();
 	}
+}
+
+void Renderer::UpdateScene(float dt) {
+	camera->UpdateCamera(dt);
+	viewMatrix = camera->BuildViewMatrix();
 }
