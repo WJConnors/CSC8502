@@ -46,6 +46,12 @@ void Renderer::DrawNode(SceneNode* n) {
 		glUniformMatrix4fv(
 			glGetUniformLocation(shader->GetProgram(),
 			"modelMatrix"), 1, false, model.values);
+		//Vector4 temp = n->GetColour();
+		auto temp = (float*)&n->GetColour();
+		float r = temp[0];
+		float g = temp[1];
+		float b = temp[2];
+		float a = temp[3];
 		glUniform4fv(glGetUniformLocation(shader->GetProgram(),
 			"nodeColour"), 1, (float*)&n->GetColour());
 		glUniform1i(glGetUniformLocation(shader->GetProgram(),

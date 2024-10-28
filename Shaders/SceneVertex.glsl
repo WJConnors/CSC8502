@@ -8,7 +8,7 @@ uniform vec4 nodeColour;
 in vec3 position;
 in vec2 texCoord;
 
-out vertex {
+out Vertex {
 	vec2 texCoord;
 	vec4 colour;
 } OUT;
