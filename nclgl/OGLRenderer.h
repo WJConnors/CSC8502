@@ -35,6 +35,7 @@ _-_-_-_-_-_-_-""  ""
 #include "Window.h"
 #include "Shader.h"
 #include "Mesh.h"
+#include "Light.h"
 
 using std::vector;
 
@@ -43,7 +44,6 @@ using std::vector;
 extern const Matrix4 biasMatrix;
 
 class Shader;
-class Light;
 
 class OGLRenderer	{
 public:
@@ -58,6 +58,7 @@ public:
 	bool			HasInitialised() const;	
 	
 protected:
+	void SetShaderLight(const Light& l);
 	virtual void	Resize(int x, int y);	
 	void			UpdateShaderMatrices();
 	void			BindShader(Shader*s);
