@@ -7,7 +7,7 @@
 using std::ifstream;
 
 MeshMaterial::MeshMaterial(const std::string& filename) {
-	ifstream file(MESHDIR+filename);
+	ifstream file(MESHDIR + filename);
 
 	string dataType;
 	file >> dataType;
@@ -31,16 +31,19 @@ MeshMaterial::MeshMaterial(const std::string& filename) {
 
 	materialLayers.resize(matCount);
 
+	file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
 	for (int i = 0; i < matCount; ++i) {
 		string name;
 		int count;
 
 		std::getline(file, name);
 		file >> count;
+		file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
 		for (int j = 0; j < count; ++j) {
 			string entryData;
-			file >> entryData;
+			std::getline(file, entryData);
 			string channel;
 			string file;
 			size_t split = entryData.find_first_of(':');
