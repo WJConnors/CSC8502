@@ -15,7 +15,7 @@ HeightMap::HeightMap(const std::string& name) {
 	indices = new GLuint[numIndices];
 
 	Vector3 vertexScale = Vector3(16.0f, 1.0f, 16.0f);
-	Vector2 textureScale = Vector2(1 / 4.0f, 1 / 4.0f);
+	Vector2 textureScale = Vector2(1 / 16.0f, 1 / 16.0f);
 	for (int z = 0; z < iHeight; ++z) {
 		for (int x = 0; x < iWidth; ++x) {
 			int offset = (z * iWidth) + x;
