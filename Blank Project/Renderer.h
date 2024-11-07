@@ -1,5 +1,7 @@
 #pragma once
 #include "../NCLGL/OGLRenderer.h"
+class HeightMap;
+class Camera;
 
 class Renderer : public OGLRenderer	{
 public:
@@ -8,6 +10,8 @@ public:
 	 void RenderScene()				override;
 	 void UpdateScene(float msec)	override;
 protected:
-	Mesh*	triangle;
-	Shader* basicShader;
+	HeightMap* heightMap;
+	Shader* shader;
+	Camera* camera;
+	GLuint terrainTex;
 };
