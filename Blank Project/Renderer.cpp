@@ -11,7 +11,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	shader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
 	if (!shader->LoadSuccess()) return;
 
-	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow6.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!terrainTex) return;
 
 	SetTextureRepeating(terrainTex, true);
