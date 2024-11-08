@@ -2,6 +2,8 @@
 #include "../nclgl/Camera.h"
 #include "../nclgl/HeightMap.h"
 
+float repeatFactor = 5;
+
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"manualHM.png");
 	camera = new Camera(-40, 270, Vector3());
@@ -11,7 +13,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	shader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
 	if (!shader->LoadSuccess()) return;
 
-	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow6.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!terrainTex) return;
 
 	SetTextureRepeating(terrainTex, true);
@@ -38,6 +40,8 @@ void Renderer::RenderScene()	{
 
 	BindShader(shader);
 	UpdateShaderMatrices();
+
+	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
 
 	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
