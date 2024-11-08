@@ -10,13 +10,16 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5, 0.1, 0.5));
 
-	shader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	shader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
 	if (!shader->LoadSuccess()) return;
 
-	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	if (!terrainTex) return;
+	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!mountainTex) return;
+	valleyTex = SOIL_load_OGL_texture(TEXTUREDIR"snow4.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!mountainTex) return;
 
-	SetTextureRepeating(terrainTex, true);
+	SetTextureRepeating(mountainTex, true);
+	SetTextureRepeating(valleyTex, true);
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 
 	glEnable(GL_DEPTH_TEST);
@@ -43,9 +46,17 @@ void Renderer::RenderScene()	{
 
 	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(shader->GetProgram(), "mountainTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, terrainTex);
+	glBindTexture(GL_TEXTURE_2D, mountainTex);
+
+	glUniform1i(glGetUniformLocation(shader->GetProgram(), "valleyTex"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, valleyTex);
+
+	glUniform1f(glGetUniformLocation(shader->GetProgram(), "heightThreshold"), 10.0f);
+	glUniform1f(glGetUniformLocation(shader->GetProgram(), "transitionWidth"), 5.0f);
+
 	heightMap->Draw();
 }
 

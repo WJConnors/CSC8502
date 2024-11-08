@@ -13,5 +13,5 @@ protected:
 	HeightMap* heightMap;
 	Shader* shader;
 	Camera* camera;
-	GLuint terrainTex;
+	GLuint mountainTex;
 };
