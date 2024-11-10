@@ -18,7 +18,7 @@ public:
 protected:
 	GLuint textures[2];
 	Mesh* meshes[2];
-	Shader* shader;
+	Shader* landscapeShader;
 	Vector3 positions[2];
 
 	bool modifyObject;

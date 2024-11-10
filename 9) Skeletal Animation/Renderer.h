@@ -18,7 +18,7 @@ public:
 protected:
 	Camera* camera;
 	Mesh* mesh;
-	Shader* shader;
+	Shader* landscapeShader;
 	MeshAnimation* anim;
 	MeshMaterial* material;
 	vector<GLuint> matTextures;

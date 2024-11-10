@@ -7,8 +7,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	if (!texture) return;
 
-	shader = new Shader("TexturedVertex.glsl", "texturedfragment.glsl");
-	if (!shader->LoadSuccess()) {
+	landscapeShader = new Shader("TexturedVertex.glsl", "texturedfragment.glsl");
+	if (!landscapeShader->LoadSuccess()) {
 		return;
 	}
 	filtering = true;
@@ -18,16 +18,16 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 Renderer::~Renderer(void) {
 	delete triangle;
-	delete shader;
+	delete landscapeShader;
 	glDeleteTextures(1, &texture);
 }
 
 void Renderer::RenderScene() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	BindShader(shader);
+	BindShader(landscapeShader);
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 

@@ -14,7 +14,7 @@ public:
 	void ToggleFiltering();
 	
 protected:
-	Shader* shader;
+	Shader* landscapeShader;
 	Mesh* triangle;
 	GLuint texture;
 	bool filtering;

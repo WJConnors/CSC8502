@@ -11,8 +11,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(textures[0], true);
 	SetTextureRepeating(textures[1], true);
 
-	shader = new Shader("TexturedVertex.glsl", "StencilFragment.glsl");
-	if (!shader->LoadSuccess()) return;
+	landscapeShader = new Shader("TexturedVertex.glsl", "StencilFragment.glsl");
+	if (!landscapeShader->LoadSuccess()) return;
 
 	usingScissor = false;
 	usingStencil = false;
@@ -23,7 +23,7 @@ Renderer::~Renderer(void) {
 	delete meshes[0];
 	delete meshes[1];
 	glDeleteTextures(2, textures);
-	delete shader;
+	delete landscapeShader;
 }
 
 void Renderer::ToggleScissor() {
@@ -42,12 +42,12 @@ void Renderer::RenderScene() {
 		glScissor((float)width / 2.5f, (float)height / 2.5f, (float)width / 5.0f, (float)height / 5.0f);
 	}
 
-	BindShader(shader);
+	BindShader(landscapeShader);
 
 	textureMatrix = Matrix4::Scale(Vector3(6, 6, 6));
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 
 	if (usingStencil) {
 		glEnable(GL_STENCIL_TEST);

@@ -17,7 +17,7 @@ public:
 
 protected:
 	HeightMap* heightMap;
-	Shader* shader;
+	Shader* landscapeShader;
 	Camera* camera;
 	Light* light;
 	GLuint texture;

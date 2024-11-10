@@ -6,8 +6,8 @@
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	heightMap = new HeightMap(TEXTUREDIR"noise.png");
 	texture = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	shader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
-	if (!shader->LoadSuccess() || !texture) {
+	landscapeShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
+	if (!landscapeShader->LoadSuccess() || !texture) {
 		return;
 	}
 	SetTextureRepeating(texture, true);
@@ -25,7 +25,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete camera;
 	delete heightMap;
-	delete shader;
+	delete landscapeShader;
 	delete light;
 }
 
@@ -36,14 +36,14 @@ void Renderer::UpdateScene(float dt) {
 
 void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	BindShader(shader);
+	BindShader(landscapeShader);
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 
-	glUniform3fv(glGetUniformLocation(shader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
 	UpdateShaderMatrices();
 	SetShaderLight(*light);

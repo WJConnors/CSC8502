@@ -11,7 +11,7 @@ public:
 	void UpdateScene(float dt) override;
 protected:
 	HeightMap* heightMap;
-	Shader* shader;
+	Shader* landscapeShader;
 	Camera* camera;
 	GLuint mountainTex;
 };

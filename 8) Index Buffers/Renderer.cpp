@@ -8,8 +8,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5, 2, 0.5));
 
-	shader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
-	if (!shader->LoadSuccess()) {
+	landscapeShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	if (!landscapeShader->LoadSuccess()) {
 		return;
 	}
 
@@ -30,7 +30,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete heightMap;
 	delete camera;
-	delete shader;
+	delete landscapeShader;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -41,10 +41,10 @@ void Renderer::UpdateScene(float dt) {
 void Renderer::RenderScene() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	BindShader(shader);
+	BindShader(landscapeShader);
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mountainTex);
 	heightMap->Draw();

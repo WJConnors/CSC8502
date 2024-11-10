@@ -3,8 +3,8 @@
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh");
 	camera = new Camera();
-	shader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
-	if (!shader->LoadSuccess()) {
+	landscapeShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+	if (!landscapeShader->LoadSuccess()) {
 		return;		
 	}
 
@@ -19,7 +19,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 Renderer ::~Renderer(void) {
 	delete root;
-	delete shader;
+	delete landscapeShader;
 	delete camera;
 	delete cube;	
 }
@@ -32,9 +32,9 @@ void Renderer::UpdateScene(float dt) {
 
 void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	BindShader(shader);
+	BindShader(landscapeShader);
 	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(shader->GetProgram(),
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(),
 	 "diffuseTex"), 1);
 	DrawNode(root);	
 }
@@ -44,7 +44,7 @@ void Renderer::DrawNode(SceneNode* n) {
 		Matrix4 model = n->GetWorldTransform() *
 			Matrix4::Scale(n-> GetModelScale());
 		glUniformMatrix4fv(
-			glGetUniformLocation(shader->GetProgram(),
+			glGetUniformLocation(landscapeShader->GetProgram(),
 			"modelMatrix"), 1, false, model.values);
 		//Vector4 temp = n->GetColour();
 		auto temp = (float*)&n->GetColour();
@@ -52,9 +52,9 @@ void Renderer::DrawNode(SceneNode* n) {
 		float g = temp[1];
 		float b = temp[2];
 		float a = temp[3];
-		glUniform4fv(glGetUniformLocation(shader->GetProgram(),
+		glUniform4fv(glGetUniformLocation(landscapeShader->GetProgram(),
 			"nodeColour"), 1, (float*)&n->GetColour());
-		glUniform1i(glGetUniformLocation(shader->GetProgram(),
+		glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(),
 			"useTexture"), 0);
 		n->Draw(*this);
 	}

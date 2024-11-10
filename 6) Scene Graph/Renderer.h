@@ -19,5 +19,5 @@ protected:
 	SceneNode* root;
 	Camera* camera;
 	Mesh* cube;
-	Shader* shader;
+	Shader* landscapeShader;
 };

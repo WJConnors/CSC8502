@@ -12,9 +12,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	positions[0] = Vector3(0, 0, -5);
 	positions[1] = Vector3(0, 0, -5);
 
-	shader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	landscapeShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
 
-	if (!shader->LoadSuccess()) return;
+	if (!landscapeShader->LoadSuccess()) return;
 
 	usingDepth = false;
 	usingAlpha = false;
@@ -28,19 +28,19 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 Renderer::~Renderer(void) {
 	delete meshes[0];
 	delete meshes[1];
-	delete shader;
+	delete landscapeShader;
 	glDeleteTextures(2, textures);
 }
 
 void Renderer::RenderScene() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	BindShader(shader);
+	BindShader(landscapeShader);
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	for (unsigned int i = 0; i < 2; ++i) {
-		glUniformMatrix4fv(glGetUniformLocation(shader->GetProgram(), "modelMatrix"), 1, false, (float*)&Matrix4::Translation(positions[i]));
+		glUniformMatrix4fv(glGetUniformLocation(landscapeShader->GetProgram(), "modelMatrix"), 1, false, (float*)&Matrix4::Translation(positions[i]));
 		glBindTexture(GL_TEXTURE_2D, textures[i]);
 		meshes[i]->Draw();
 	}

@@ -9,8 +9,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	camera = new Camera(-3, 0.0f, Vector3(0, 1.4f, 4.0f));
-	shader = new Shader("SkinningVertex.glsl", "texturedFragment.glsl");
-	if (!shader->LoadSuccess()) {
+	landscapeShader = new Shader("SkinningVertex.glsl", "texturedFragment.glsl");
+	if (!landscapeShader->LoadSuccess()) {
 		return;
 	}
 	mesh = Mesh::LoadFromMeshFile("Role_T.msh");
@@ -35,7 +35,7 @@ Renderer::~Renderer(void) {
 	delete mesh;
 	delete anim;
 	delete material;
-	delete shader;
+	delete landscapeShader;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -52,8 +52,8 @@ void Renderer::UpdateScene(float dt) {
 void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-	BindShader(shader);
-	glUniform1i(glGetUniformLocation(shader->GetProgram(), "diffuseTes"), 0);
+	BindShader(landscapeShader);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTes"), 0);
 	UpdateShaderMatrices();
 	vector<Matrix4> frameMatrices;
 
@@ -64,7 +64,7 @@ void Renderer::RenderScene() {
 		frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
 	}
 
-	int j = glGetUniformLocation(shader->GetProgram(), "joints");
+	int j = glGetUniformLocation(landscapeShader->GetProgram(), "joints");
 	glUniformMatrix4fv(j, frameMatrices.size(), false, (float*)frameMatrices.data());
 
 	for (int i = 0; i < mesh->GetSubMeshCount(); ++i) {

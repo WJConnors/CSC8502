@@ -8,11 +8,11 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
 	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh");
 
-	shader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+	landscapeShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
 
 	texture = SOIL_load_OGL_texture(TEXTUREDIR"stainedglass.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
-	if (!shader->LoadSuccess() || !texture) {
+	if (!landscapeShader->LoadSuccess() || !texture) {
 		return;
 	}
 
@@ -45,7 +45,7 @@ Renderer::~Renderer(void) {
 	delete quad;
 	delete camera;
 	delete cube;
-	delete shader;
+	delete landscapeShader;
 	glDeleteTextures(1, &texture);
 }
 
@@ -93,14 +93,14 @@ void Renderer::DrawNode(SceneNode* n) {
 		Matrix4 model = n->GetWorldTransform() *
 		Matrix4::Scale(n->GetModelScale());
 		glUniformMatrix4fv(
-			glGetUniformLocation(shader->GetProgram(),
+			glGetUniformLocation(landscapeShader->GetProgram(),
 			"modelMatrix"), 1, false, model.values);
-		glUniform4fv(glGetUniformLocation(shader->GetProgram(),
+		glUniform4fv(glGetUniformLocation(landscapeShader->GetProgram(),
 			"nodeColour"), 1, (float*)&n->GetColour());
 			texture = n->GetTexture();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(shader->GetProgram(),
+		glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(),
 			"useTexture"), texture);
 			n->Draw(*this);
 	}
@@ -110,9 +110,9 @@ void Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	BindShader(shader);
+	BindShader(landscapeShader);
 	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(shader->GetProgram(),
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(),
 		"diffuseTex"), 0);
 	DrawNodes();
 	ClearNodeLists();

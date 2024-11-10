@@ -27,7 +27,7 @@ protected:
 	Camera* camera;
 	Mesh* quad;
 	Mesh* cube;
-	Shader* shader;
+	Shader* landscapeShader;
 	GLuint texture;
 
 	Frustum frameFrustum;
