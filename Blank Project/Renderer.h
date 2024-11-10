@@ -18,13 +18,21 @@ protected:
 	void DrawNodes();
 	void DrawNode(SceneNode* n);
 
+	void DrawScene();
+	void PresentScene();
+	void GenBuffers();
+
 	SceneNode* root;
+	Mesh* quad;
 	HeightMap* heightMap;
 	Shader* landscapeShader;
 	Shader* nodeShader;
+	Shader* sceneShader;
 	Camera* camera;
 	GLuint mountainTex;
 	GLuint valleyTex;
+	GLuint bufferFBO;
+	GLuint bufferColourTex;
 
 	Frustum frameFrustum;
 

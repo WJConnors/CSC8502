@@ -12,12 +12,16 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5, 0.1, 0.5));
+	quad = Mesh::GenerateQuad();
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
 	if (!landscapeShader->LoadSuccess()) return;
 
 	nodeShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
 	if (!nodeShader->LoadSuccess()) return;
+
+	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	if (!sceneShader->LoadSuccess()) return;
 
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
@@ -26,6 +30,8 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 
 	SetTextureRepeating(mountainTex, true);
 	SetTextureRepeating(valleyTex, true);
+
+	GenBuffers();
 
 	root = new SceneNode();
 
@@ -105,6 +111,12 @@ void Renderer::DrawNode(SceneNode* n) {
 }
 
 void Renderer::RenderScene() {
+	DrawScene();
+	//PresentScene();
+}
+
+void Renderer::DrawScene() {
+	//glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	BindShader(landscapeShader);
@@ -132,9 +144,48 @@ void Renderer::RenderScene() {
 	glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "diffuseTex"), 0);
 	DrawNodes();
 	ClearNodeLists();
+
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::PresentScene() {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	BindShader(sceneShader);
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	UpdateShaderMatrices();
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
+	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+
+	quad->Draw();
 }
 
 void Renderer::ClearNodeLists() {
 	transparentNodeList.clear();
 	nodeList.clear();
+}
+
+void Renderer::GenBuffers() {
+	glGenFramebuffers(1, &bufferFBO);
+	glGenTextures(1, &bufferColourTex);
+
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cerr << "Framebuffer not complete!" << std::endl;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
