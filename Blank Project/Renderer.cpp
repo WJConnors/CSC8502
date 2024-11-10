@@ -104,7 +104,7 @@ void Renderer::DrawNode(SceneNode* n) {
 	}
 }
 
-void Renderer::RenderScene()	{
+void Renderer::RenderScene() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	BindShader(landscapeShader);
@@ -129,8 +129,7 @@ void Renderer::RenderScene()	{
 	SortNodeLists();
 	BindShader(nodeShader);
 	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(nodeShader->GetProgram(),
-		"diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "diffuseTex"), 0);
 	DrawNodes();
 	ClearNodeLists();
 }
