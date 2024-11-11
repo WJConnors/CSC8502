@@ -20,6 +20,7 @@ protected:
 	void DrawHeightMap();
 
 	void DrawScene();
+	void DrawPostProcess();
 	void PresentScene();
 	void GenBuffers();
 
@@ -29,11 +30,14 @@ protected:
 	Shader* landscapeShader;
 	Shader* nodeShader;
 	Shader* sceneShader;
+	Shader* processShader;
 	Camera* camera;
 	GLuint mountainTex;
 	GLuint valleyTex;
 	GLuint bufferFBO;
-	GLuint bufferColourTex;
+	GLuint processFBO;
+	GLuint bufferColourTex[2];
+	GLuint bufferDepthTex;
 
 	Frustum frameFrustum;
 
