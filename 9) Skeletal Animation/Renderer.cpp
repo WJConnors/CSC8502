@@ -53,7 +53,7 @@ void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	BindShader(landscapeShader);
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTes"), 0);
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "diffuseTex"), 0);
 	UpdateShaderMatrices();
 	vector<Matrix4> frameMatrices;
 

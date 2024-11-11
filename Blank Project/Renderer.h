@@ -4,6 +4,8 @@
 class HeightMap;
 class Camera;
 class SceneNode;
+class MeshAnimation;
+class MeshMaterial;
 
 class Renderer : public OGLRenderer	{
 public:
@@ -43,4 +45,13 @@ protected:
 
 	vector<SceneNode*> transparentNodeList;
 	vector<SceneNode*> nodeList;
+
+	Mesh* animMesh;
+	MeshAnimation* anim;
+	MeshMaterial* material;
+	vector<GLuint> matTextures;
+	int currentFrame;
+	float frameTime;
+	Shader* animShader;
+	void DrawAnim();
 };

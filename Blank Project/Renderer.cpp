@@ -3,6 +3,8 @@
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/SceneNode.h"
 #include "../nclgl/CubeRobot.h"
+#include "../nclgl/MeshAnimation.h"
+#include "../nclgl/MeshMaterial.h"
 #include <algorithm>
 
 float repeatFactor = 5.0f;
@@ -27,6 +29,9 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	processShader = new Shader("TexturedVertex.glsl", "processfrag.glsl");
 	if (!processShader->LoadSuccess()) return;
 
+	animShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
+	if (!animShader->LoadSuccess()) return;
+
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
 	valleyTex = SOIL_load_OGL_texture(TEXTUREDIR"snow4.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -36,6 +41,21 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	SetTextureRepeating(valleyTex, true);
 
 	GenBuffers();
+
+	animMesh = Mesh::LoadFromMeshFile("Role_T.msh");
+	anim = new MeshAnimation("Role_T.anm");
+	material = new MeshMaterial("Role_T.mat");
+
+	for (int i = 0; i < animMesh->GetSubMeshCount(); ++i) {
+		const MeshMaterialEntry* matEntry = material->GetMaterialForLayer(i);
+		const string* filename = nullptr;
+		matEntry->GetEntry("Diffuse", &filename);
+		string path = TEXTUREDIR + *filename;
+		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
+		matTextures.emplace_back(texID);
+	}
+	currentFrame = 0;
+	frameTime = 0.0f;
 
 	root = new SceneNode();
 
@@ -59,12 +79,22 @@ Renderer::~Renderer(void)	{
 	glDeleteTextures(1, &bufferDepthTex);
 	glDeleteFramebuffers(1, &bufferFBO);
 	glDeleteFramebuffers(1, &processFBO);
+
+	delete animMesh;
+	delete anim;
+	delete material;
 }
 
 void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
+
+	frameTime -= dt;
+	while (frameTime < 0.0f) {
+		currentFrame = (currentFrame + 1) % anim->GetFrameCount();
+		frameTime += 1.0f / anim->GetFrameRate();
+	}
 
 	root->Update(dt);
 }
@@ -116,7 +146,7 @@ void Renderer::DrawNode(SceneNode* n) {
 
 void Renderer::RenderScene() {
 	DrawScene();
-	DrawPostProcess();
+	//DrawPostProcess();
 	PresentScene();
 }
 
@@ -134,6 +164,8 @@ void Renderer::DrawScene() {
 	glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "diffuseTex"), 0);
 	DrawNodes();
 	ClearNodeLists();
+
+	DrawAnim();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -241,4 +273,30 @@ void Renderer::DrawHeightMap() {
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 5.0f);
 
 	heightMap->Draw();
+}
+
+void Renderer::DrawAnim() {
+	BindShader(animShader);
+	Vector3 dimensions = heightMap->GetHeightmapSize();
+	Vector3 temp = (dimensions * Vector3(0.5, 0.1, 0.5));
+	modelMatrix = Matrix4::Translation(temp);
+	UpdateShaderMatrices();
+	glUniform1i(glGetUniformLocation(animShader->GetProgram(), "diffuseTex"), 0);
+	vector<Matrix4> frameMatrices;
+
+	const Matrix4* invBindPose = animMesh->GetInverseBindPose();
+	const Matrix4* frameData = anim->GetJointData(currentFrame);
+
+	for (unsigned int i = 0; i < animMesh->GetJointCount(); ++i) {
+		frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
+	}
+
+	int j = glGetUniformLocation(animShader->GetProgram(), "joints");
+	glUniformMatrix4fv(j, frameMatrices.size(), false, (float*)frameMatrices.data());
+
+	for (int i = 0; i < animMesh->GetSubMeshCount(); ++i) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, matTextures[i]);
+		animMesh->DrawSubMesh(i);
+	}
 }
