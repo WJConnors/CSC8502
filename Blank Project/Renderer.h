@@ -17,6 +17,7 @@ protected:
 	void ClearNodeLists();
 	void DrawNodes();
 	void DrawNode(SceneNode* n);
+	void DrawHeightMap();
 
 	void DrawScene();
 	void PresentScene();

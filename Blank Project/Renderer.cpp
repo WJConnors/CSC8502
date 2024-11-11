@@ -5,7 +5,7 @@
 #include "../nclgl/CubeRobot.h"
 #include <algorithm>
 
-float repeatFactor = 5;
+float repeatFactor = 5.0f;
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"manualHM.png");
@@ -51,6 +51,8 @@ Renderer::~Renderer(void)	{
 	delete landscapeShader;
 	glDeleteTextures(1, &mountainTex);
 	glDeleteTextures(1, &valleyTex);
+	glDeleteFramebuffers(1, &bufferFBO);
+	glDeleteTextures(1, &bufferColourTex);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -96,46 +98,26 @@ void Renderer::DrawNode(SceneNode* n) {
 	if (n->GetMesh()) {
 		Matrix4 model = n->GetWorldTransform() *
 			Matrix4::Scale(n->GetModelScale());
-		glUniformMatrix4fv(
-			glGetUniformLocation(nodeShader->GetProgram(),
-				"modelMatrix"), 1, false, model.values);
-		glUniform4fv(glGetUniformLocation(nodeShader->GetProgram(),
-			"nodeColour"), 1, (float*)&n->GetColour());
+		glUniformMatrix4fv(glGetUniformLocation(nodeShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+		glUniform4fv(glGetUniformLocation(nodeShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
 		GLuint texture = n->GetTexture();
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(nodeShader->GetProgram(),
-			"useTexture"), texture);
+		glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "useTexture"), texture);
 		n->Draw(*this);
 	}
 }
 
 void Renderer::RenderScene() {
 	DrawScene();
-	//PresentScene();
+	PresentScene();
 }
 
 void Renderer::DrawScene() {
-	//glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	BindShader(landscapeShader);
-	UpdateShaderMatrices();
-
-	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
-
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainTex"), 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, mountainTex);
-
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyTex"), 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, valleyTex);
-
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 10.0f);
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 5.0f);
-
-	heightMap->Draw();
+	DrawHeightMap();
 
 	BuildNodeLists(root);
 	SortNodeLists();
@@ -145,10 +127,11 @@ void Renderer::DrawScene() {
 	DrawNodes();
 	ClearNodeLists();
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::PresentScene() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	BindShader(sceneShader);
@@ -188,4 +171,24 @@ void Renderer::GenBuffers() {
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::DrawHeightMap() {
+	BindShader(landscapeShader);
+	UpdateShaderMatrices();
+
+	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
+
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainTex"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, mountainTex);
+
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyTex"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, valleyTex);
+
+	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 10.0f);
+	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 5.0f);
+
+	heightMap->Draw();
 }
