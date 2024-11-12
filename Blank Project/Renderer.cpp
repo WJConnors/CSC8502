@@ -302,7 +302,7 @@ void Renderer::DrawHeightMap() {
 void Renderer::DrawAnim() {
 	BindShader(animShader);
 	Vector3 dimensions = heightMap->GetHeightmapSize();
-	Vector3 temp = (dimensions * Vector3(0.5, 0.1, 0.5));
+	Vector3 temp = (dimensions * Vector3(0.5, 0.2, 0.5));
 	modelMatrix = Matrix4::Translation(temp);
 	UpdateShaderMatrices();
 	glUniform1i(glGetUniformLocation(animShader->GetProgram(), "diffuseTex"), 0);
