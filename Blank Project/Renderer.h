@@ -22,7 +22,7 @@ protected:
 	void DrawHeightMap();
 
 	void DrawScene();
-	void DrawPostProcess();
+	void DrawBlur();
 	void PresentScene();
 	void GenBuffers();
 
@@ -37,7 +37,8 @@ protected:
 	GLuint mountainTex;
 	GLuint valleyTex;
 	GLuint bufferFBO;
-	GLuint processFBO;
+	GLuint blurFBO;
+	GLuint blurDepthTex;
 	GLuint bufferColourTex[2];
 	GLuint bufferDepthTex;
 

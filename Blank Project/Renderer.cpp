@@ -8,13 +8,13 @@
 #include <algorithm>
 
 float repeatFactor = 5.0f;
-const int POST_PASSES = 10;
+const int POST_PASSES = 5;
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
-	heightMap = new HeightMap(TEXTUREDIR"manualHM.png");
+	heightMap = new HeightMap(TEXTUREDIR"MountainHM.png");
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
-	camera->SetPosition(dimensions * Vector3(0.5, 0.1, 0.5));
+	camera->SetPosition(dimensions * Vector3(0.5, 0.3, 0.5));
 	quad = Mesh::GenerateQuad();
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
@@ -78,7 +78,7 @@ Renderer::~Renderer(void)	{
 	glDeleteTextures(2, bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
 	glDeleteFramebuffers(1, &bufferFBO);
-	glDeleteFramebuffers(1, &processFBO);
+	glDeleteFramebuffers(1, &blurFBO);
 
 	delete animMesh;
 	delete anim;
@@ -146,7 +146,6 @@ void Renderer::DrawNode(SceneNode* n) {
 
 void Renderer::RenderScene() {
 	DrawScene();
-	//DrawPostProcess();
 	PresentScene();
 }
 
@@ -156,6 +155,14 @@ void Renderer::DrawScene() {
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 
 	DrawHeightMap();
+
+	DrawBlur();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	viewMatrix = camera->BuildViewMatrix();
+	UpdateShaderMatrices();
 
 	BuildNodeLists(root);
 	SortNodeLists();
@@ -170,10 +177,10 @@ void Renderer::DrawScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::DrawPostProcess() {
-	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+void Renderer::DrawBlur() {
+	glBindFramebuffer(GL_FRAMEBUFFER, blurFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	BindShader(processShader);
 	modelMatrix.ToIdentity();
@@ -242,7 +249,7 @@ void Renderer::GenBuffers() {
 	}
 
 	glGenFramebuffers(1, &bufferFBO);
-	glGenFramebuffers(1, &processFBO);
+	
 
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
@@ -252,6 +259,23 @@ void Renderer::GenBuffers() {
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferColourTex[0]) {
 		return;
 	}
+
+	glGenFramebuffers(1, &blurFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, blurFBO);
+
+	glGenTextures(1, &blurDepthTex);
+	glBindTexture(GL_TEXTURE_2D, blurDepthTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, blurDepthTex, 0);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cerr << "Blur framebuffer is not complete!" << std::endl;
+	}
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -269,8 +293,8 @@ void Renderer::DrawHeightMap() {
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, valleyTex);
 
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 10.0f);
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 5.0f);
+	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 50.0f);
+	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 10.0f);
 
 	heightMap->Draw();
 }

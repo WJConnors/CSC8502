@@ -36,7 +36,7 @@ Renderer::Renderer(Window& parent) :OGLRenderer(parent) {
 	}
 
 	glGenFramebuffers(1, &bufferFBO);
-	glGenFramebuffers(1, &processFBO);
+	glGenFramebuffers(1, &blurFBO);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
@@ -61,7 +61,7 @@ Renderer::~Renderer(void) {
 	glDeleteTextures(2, bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
 	glDeleteFramebuffers(1, &bufferFBO);
-	glDeleteFramebuffers(1, &processFBO);
+	glDeleteFramebuffers(1, &blurFBO);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -71,7 +71,7 @@ void Renderer::UpdateScene(float dt) {
 
 void Renderer::RenderScene() {
 	DrawScene();
-	DrawPostProcess();
+	DrawBlur();
 	PresentScene();
 }
 
@@ -90,8 +90,8 @@ void Renderer::DrawScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::DrawPostProcess() {
-	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+void Renderer::DrawBlur() {
+	glBindFramebuffer(GL_FRAMEBUFFER, blurFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 

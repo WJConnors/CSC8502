@@ -14,7 +14,7 @@ public:
 
 protected:
 	void PresentScene();
-	void DrawPostProcess();
+	void DrawBlur();
 	void DrawScene();
 
 	Shader* sceneShader;
@@ -26,7 +26,7 @@ protected:
 	HeightMap* heightMap;
 	GLuint heightTexture;
 	GLuint bufferFBO;
-	GLuint processFBO;
+	GLuint blurFBO;
 	GLuint bufferColourTex[2];
 	GLuint bufferDepthTex;
 };
