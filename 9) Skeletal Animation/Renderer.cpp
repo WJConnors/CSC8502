@@ -13,9 +13,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	if (!landscapeShader->LoadSuccess()) {
 		return;
 	}
-	mesh = Mesh::LoadFromMeshFile("Role_T.msh");
-	anim = new MeshAnimation("Role_T.anm");
-	material = new MeshMaterial("Role_T.mat");
+	mesh = Mesh::LoadFromMeshFile("Dragon.msh");
+	anim = new MeshAnimation("Dragon.anm");
+	material = new MeshMaterial("Dragon.mat");
+	//mesh = Mesh::LoadFromMeshFile("Role_T.msh");
+	//anim = new MeshAnimation("Role_T.anm");
+	//material = new MeshMaterial("Role_T.mat");
 
 	for (int i = 0; i < mesh->GetSubMeshCount(); ++i) {
 		const MeshMaterialEntry* matEntry = material->GetMaterialForLayer(i);
