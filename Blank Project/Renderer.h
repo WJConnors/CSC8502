@@ -36,7 +36,9 @@ protected:
 	Shader* processShader;
 	Camera* camera;
 	GLuint mountainTex;
+	GLuint mountainBump;
 	GLuint valleyTex;
+	GLuint valleyBump;
 	GLuint bufferFBO;
 	GLuint blurFBO;
 	GLuint blurDepthTex;

@@ -15,7 +15,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5, 0.3, 0.5));
-	light = new Light(dimensions * Vector3(0.5f, 1.0f, 0.5f), Vector4(1,1,1,1), dimensions.x * 0.5f);
+	light = new Light(dimensions * Vector3(0.5, 0.3, 0.5), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
 	quad = Mesh::GenerateQuad();
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
@@ -35,11 +35,21 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
+	mountainBump = SOIL_load_OGL_texture(TEXTUREDIR"snow2bump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (mountainBump == 0) {
+		std::cerr << "Failed to load mountain bump map: " << SOIL_last_result() << std::endl;
+	}
 	valleyTex = SOIL_load_OGL_texture(TEXTUREDIR"snow4.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!valleyTex) return;
+	valleyBump = SOIL_load_OGL_texture(TEXTUREDIR"snow4bump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (valleyBump == 0) {
+		std::cerr << "Failed to load valley bump map: " << SOIL_last_result() << std::endl;
+	}
 
 	SetTextureRepeating(mountainTex, true);
+	SetTextureRepeating(mountainBump, true);
 	SetTextureRepeating(valleyTex, true);
+	SetTextureRepeating(valleyBump, true);
 
 	GenBuffers();
 
@@ -294,6 +304,14 @@ void Renderer::DrawHeightMap() {
 	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyTex"), 1);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, valleyTex);
+
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainBump"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, mountainBump);
+
+	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyBump"), 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, valleyBump);
 
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 50.0f);
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 10.0f);
