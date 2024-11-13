@@ -15,6 +15,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5, 0.3, 0.5));
+	light = new Light(dimensions * Vector3(0.5f, 1.0f, 0.5f), Vector4(1,1,1,1), dimensions.x * 0.5f);
 	quad = Mesh::GenerateQuad();
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
@@ -83,6 +84,8 @@ Renderer::~Renderer(void)	{
 	delete animMesh;
 	delete anim;
 	delete material;
+
+	delete light;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -281,7 +284,6 @@ void Renderer::GenBuffers() {
 
 void Renderer::DrawHeightMap() {
 	BindShader(landscapeShader);
-	UpdateShaderMatrices();
 
 	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
 
@@ -295,6 +297,10 @@ void Renderer::DrawHeightMap() {
 
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 50.0f);
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 10.0f);
+	glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	UpdateShaderMatrices();
+
+	SetShaderLight(*light);
 
 	heightMap->Draw();
 }

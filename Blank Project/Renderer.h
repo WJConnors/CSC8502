@@ -6,6 +6,7 @@ class Camera;
 class SceneNode;
 class MeshAnimation;
 class MeshMaterial;
+class Light;
 
 class Renderer : public OGLRenderer	{
 public:
@@ -55,4 +56,6 @@ protected:
 	float frameTime;
 	Shader* animShader;
 	void DrawAnim();
+
+	Light* light;
 };
