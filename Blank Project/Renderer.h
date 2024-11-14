@@ -24,11 +24,26 @@ protected:
 	void DrawWater();
 	void DrawSkybox();
 	
-
 	void DrawScene();
 	void DrawBlur();
 	void PresentScene();
 	void GenBuffers();
+
+	void GenerateScreenTexture(GLuint& into, bool depth = false);
+	void DrawPointLights();
+	void CombineBuffers();
+	GLuint gBufferFBO;
+	GLuint gBufferColourTex;
+	GLuint gBufferNormalTex;
+	GLuint gBufferDepthTex;
+	GLuint pointLightFBO;
+	GLuint lightDiffuseTex;
+	GLuint lightSpecularTex;
+	Shader* gBufferShader;
+	Shader* pointLightShader;
+	Shader* combineShader;
+	Light* pointLights;
+	Mesh* sphere;
 
 	SceneNode* root;
 	Mesh* quad;
@@ -39,6 +54,7 @@ protected:
 	Shader* processShader;
 	Shader* reflectShader;
 	Shader* skyboxShader;
+
 	Camera* camera;
 	GLuint mountainTex;
 	GLuint mountainBump;

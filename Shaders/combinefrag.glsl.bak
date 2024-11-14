@@ -12,11 +12,6 @@ in Vertex {
 out vec4 fragColour;
 
 void main(void) {
-	float depth = texture(depthTex, IN.texCoord).r;
-	if(depth == 1.0) {
-		discard;
-	}
-
     vec3 diffuse = texture(diffuseTex, IN.texCoord).rgb;
     vec3 light = texture(diffuseLight, IN.texCoord).rgb;
     vec3 specular = texture(specularLight, IN.texCoord).rgb;

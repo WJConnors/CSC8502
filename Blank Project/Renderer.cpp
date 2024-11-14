@@ -9,7 +9,7 @@
 
 float repeatFactor = 5.0f;
 const int POST_PASSES = 5;
-#define SHADOWSIZE 2048
+const int LIGHT_NUM = 64;
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"MountainHM.png");
@@ -18,6 +18,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera->SetPosition(dimensions * Vector3(0.5f, 0.3f, 0.5f));
 	light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
 	quad = Mesh::GenerateQuad();
+	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
 	if (!landscapeShader->LoadSuccess()) return;
@@ -67,6 +68,21 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	SetTextureRepeating(valleyTex, true);
 	SetTextureRepeating(valleyBump, true);
 	SetTextureRepeating(waterTex, true);
+
+	pointLights = new Light[LIGHT_NUM];
+	for (int i = 0; i < LIGHT_NUM; ++i) {
+		Light& l = pointLights[i];
+		l.SetPosition(Vector3(rand() % (int)dimensions.x, 0.3 * dimensions.y, rand() % (int)dimensions.z));
+		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
+		l.SetRadius(250.0f + (rand() % 250));
+	}
+
+	gBufferShader = new Shader("landscapeVertex.glsl", "gFragment.glsl");
+	pointLightShader = new Shader("pointlightvert.glsl", "pointlightfrag.glsl");
+	combineShader = new Shader("combinevert.glsl", "combinefrag.glsl");
+	if (!gBufferShader->LoadSuccess() || !pointLightShader->LoadSuccess() || !combineShader->LoadSuccess()) {
+		return;
+	}
 
 	GenBuffers();
 
@@ -123,6 +139,22 @@ Renderer::~Renderer(void)	{
 	delete sceneShader;
 	delete processShader;
 	delete animShader;
+
+	delete gBufferShader;
+	delete pointLightShader;
+	delete combineShader;
+	delete sphere;
+	delete quad;
+	delete[] pointLights;
+
+	glDeleteTextures(1, &gBufferColourTex);
+	glDeleteTextures(1, &gBufferNormalTex);
+	glDeleteTextures(1, &gBufferDepthTex);
+	glDeleteTextures(1, &lightDiffuseTex);
+	glDeleteTextures(1, &lightSpecularTex);
+
+	glDeleteFramebuffers(1, &gBufferFBO);
+	glDeleteFramebuffers(1, &pointLightFBO);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -204,8 +236,10 @@ void Renderer::DrawScene() {
 	DrawSkybox();
 
 	DrawHeightMap();
+	DrawPointLights();
+	CombineBuffers();
 
-	DrawWater();
+	//DrawWater();
 
 	DrawBlur();
 
@@ -328,39 +362,82 @@ void Renderer::GenBuffers() {
 		std::cerr << "Blur framebuffer is not complete!" << std::endl;
 	}
 
+	glGenFramebuffers(1, &gBufferFBO);
+	glGenFramebuffers(1, &pointLightFBO);
+
+	GLenum buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+
+	GenerateScreenTexture(gBufferDepthTex, true);
+	GenerateScreenTexture(gBufferColourTex);
+	GenerateScreenTexture(gBufferNormalTex);
+	GenerateScreenTexture(lightDiffuseTex);
+	GenerateScreenTexture(lightSpecularTex);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gBufferColourTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gBufferNormalTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gBufferDepthTex, 0);
+	glDrawBuffers(2, buffers);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return;
+
+	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, lightDiffuseTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, lightSpecularTex, 0);
+	glDrawBuffers(2, buffers);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return;
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void Renderer::GenerateScreenTexture(GLuint& into, bool depth) {
+	glGenTextures(1, &into);
+	glBindTexture(GL_TEXTURE_2D, into);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	GLuint format = depth ? GL_DEPTH_COMPONENT24 : GL_RGBA8;
+	GLuint type = depth ? GL_DEPTH_COMPONENT : GL_RGBA;
+
+	glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, type, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Renderer::DrawHeightMap() {
-	BindShader(landscapeShader);
+	glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	BindShader(gBufferShader);
 
 	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
 	modelMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainTex"), 0);
+	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "mountainTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mountainTex);
 
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyTex"), 1);
+	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "valleyTex"), 1);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, valleyTex);
 
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainBump"), 2);
+	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "mountainBump"), 2);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, mountainBump);
 
-	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "valleyBump"), 3);
+	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "valleyBump"), 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, valleyBump);
 
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 50.0f);
-	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 10.0f);
-	glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	glUniform1f(glGetUniformLocation(gBufferShader->GetProgram(), "heightThreshold"), 50.0f);
+	glUniform1f(glGetUniformLocation(gBufferShader->GetProgram(), "transitionWidth"), 10.0f);
+	//glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 	
-	SetShaderLight(*light);
+	//SetShaderLight(*light);
 
 	heightMap->Draw();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::DrawAnim() {
@@ -427,4 +504,73 @@ void Renderer::DrawWater() {
 
 	UpdateShaderMatrices();
 	quad->Draw();
+}
+
+void Renderer::DrawPointLights() {
+	glBindFramebuffer(GL_FRAMEBUFFER, pointLightFBO);
+	BindShader(pointLightShader);
+
+	glClearColor(0, 0, 0, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glCullFace(GL_FRONT);
+	glDepthFunc(GL_ALWAYS);
+	glDepthMask(GL_FALSE);
+
+	glUniform1i(glGetUniformLocation(pointLightShader->GetProgram(), "depthTex"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, gBufferDepthTex);
+
+	glUniform1i(glGetUniformLocation(pointLightShader->GetProgram(), "normTex"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, gBufferNormalTex);
+
+	glUniform3fv(glGetUniformLocation(pointLightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	glUniform2f(glGetUniformLocation(pointLightShader->GetProgram(), "pixelSize"), 1.0f / width, 1.0f / height);
+
+	Matrix4 invViewProj = (projMatrix * viewMatrix).Inverse();
+	glUniformMatrix4fv(glGetUniformLocation(pointLightShader->GetProgram(), "inverseProjView"), 1, false, invViewProj.values);
+
+	UpdateShaderMatrices();
+	for (int i = 0; i < LIGHT_NUM; ++i) {
+		Light& l = pointLights[i];
+		SetShaderLight(l);
+		sphere->Draw();
+	}
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glCullFace(GL_BACK);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(GL_TRUE);
+	glClearColor(0.2f, 0.2f, 0.2f, 1);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void Renderer::CombineBuffers() {
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	BindShader(combineShader);
+
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	UpdateShaderMatrices();
+
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(), "diffuseTex"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, gBufferColourTex);
+
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(), "diffuseLight"), 1);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, lightDiffuseTex);
+
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(), "specularLight"), 2);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
+
+	glUniform1i(glGetUniformLocation(combineShader->GetProgram(), "depthTex"), 3);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, gBufferDepthTex);
+
+	quad->Draw();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
