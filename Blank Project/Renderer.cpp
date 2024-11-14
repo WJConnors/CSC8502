@@ -113,6 +113,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	glCullFace(GL_BACK);
 	waterRotate = 0.0f;
 	waterCycle = 0.0f;
+	winter = false;
 	init = true;
 }
 Renderer::~Renderer(void)	{

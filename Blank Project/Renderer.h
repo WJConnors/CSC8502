@@ -87,4 +87,6 @@ protected:
 
 	float waterRotate;
 	float waterCycle;
+
+	bool winter;
 };
