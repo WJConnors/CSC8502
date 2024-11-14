@@ -3,6 +3,7 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
 uniform mat4 textureMatrix;
+uniform mat4 shadowMatrix;
 
 in vec3 position;
 in vec2 texCoord;
@@ -22,7 +23,6 @@ out Vertex {
 
 void main(void) {
 	OUT.colour = colour;
-	OUT.texCoord = texCoord;
 
 	mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
 	vec3 wNormal = normalize(normalMatrix * normalize(normal));
@@ -35,7 +35,7 @@ void main(void) {
 	vec4 worldPos = (modelMatrix * vec4(position, 1));
 	OUT.worldPos = worldPos.xyz;
 
-	//OUT.texCoord = (textureMatrix * vec4(texCoord, 0.0, 1.0)).xy;
+	OUT.texCoord = (textureMatrix * vec4(texCoord, 0.0, 1.0)).xy;
 	OUT.fragHeight = position.y;
 
 	gl_Position = (projMatrix * viewMatrix) * worldPos;

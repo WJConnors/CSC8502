@@ -9,13 +9,14 @@
 
 float repeatFactor = 5.0f;
 const int POST_PASSES = 5;
+#define SHADOWSIZE 2048
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"MountainHM.png");
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
-	camera->SetPosition(dimensions * Vector3(0.5, 0.3, 0.5));
-	light = new Light(dimensions * Vector3(0.5, 0.3, 0.5), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
+	camera->SetPosition(dimensions * Vector3(0.5f, 0.3f, 0.5f));
+	light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
 	quad = Mesh::GenerateQuad();
 
 	landscapeShader = new Shader("landscapeVertex.glsl", "landscapeFragment.glsl");
@@ -33,6 +34,13 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	animShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
 	if (!animShader->LoadSuccess()) return;
 
+	reflectShader = new Shader("reflectVertex.glsl", "reflectFragment.glsl");
+	if (!reflectShader->LoadSuccess()) return;
+
+	skyboxShader = new Shader("skyboxVertex.glsl", "skyboxFragment.glsl");
+	if (!skyboxShader->LoadSuccess()) return;
+
+
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
 	mountainBump = SOIL_load_OGL_texture(TEXTUREDIR"snow2bump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -46,10 +54,19 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 		std::cerr << "Failed to load valley bump map: " << SOIL_last_result() << std::endl;
 	}
 
+	waterTex = SOIL_load_OGL_texture(TEXTUREDIR "water.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+
+	cubeMap = SOIL_load_OGL_cubemap(
+		TEXTUREDIR "NLWest.png", TEXTUREDIR "NLEast.png",
+		TEXTUREDIR "NLUp.png", TEXTUREDIR "NLDown.png",
+		TEXTUREDIR "NLSouth.png", TEXTUREDIR "NLNorth.png",
+		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
+
 	SetTextureRepeating(mountainTex, true);
 	SetTextureRepeating(mountainBump, true);
 	SetTextureRepeating(valleyTex, true);
 	SetTextureRepeating(valleyBump, true);
+	SetTextureRepeating(waterTex, true);
 
 	GenBuffers();
 
@@ -75,8 +92,11 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
+	waterRotate = 0.0f;
+	waterCycle = 0.0f;
 	init = true;
 }
 Renderer::~Renderer(void)	{
@@ -96,11 +116,22 @@ Renderer::~Renderer(void)	{
 	delete material;
 
 	delete light;
+
+	delete reflectShader;
+	delete skyboxShader;
+	delete nodeShader;
+	delete sceneShader;
+	delete processShader;
+	delete animShader;
 }
 
 void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
+
+	waterRotate += dt * 2.0f;
+	waterCycle += dt * 0.25f;
+
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
 	frameTime -= dt;
@@ -163,11 +194,18 @@ void Renderer::RenderScene() {
 }
 
 void Renderer::DrawScene() {
+
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	viewMatrix = camera->BuildViewMatrix();
+	UpdateShaderMatrices();
+
+	DrawSkybox();
 
 	DrawHeightMap();
+
+	DrawWater();
 
 	DrawBlur();
 
@@ -175,6 +213,7 @@ void Renderer::DrawScene() {
 
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	viewMatrix = camera->BuildViewMatrix();
+	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
 	BuildNodeLists(root);
@@ -296,6 +335,8 @@ void Renderer::DrawHeightMap() {
 	BindShader(landscapeShader);
 
 	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
+	modelMatrix.ToIdentity();
+	UpdateShaderMatrices();
 
 	glUniform1i(glGetUniformLocation(landscapeShader->GetProgram(), "mountainTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
@@ -316,8 +357,7 @@ void Renderer::DrawHeightMap() {
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "heightThreshold"), 50.0f);
 	glUniform1f(glGetUniformLocation(landscapeShader->GetProgram(), "transitionWidth"), 10.0f);
 	glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
-	UpdateShaderMatrices();
-
+	
 	SetShaderLight(*light);
 
 	heightMap->Draw();
@@ -347,4 +387,44 @@ void Renderer::DrawAnim() {
 		glBindTexture(GL_TEXTURE_2D, matTextures[i]);
 		animMesh->DrawSubMesh(i);
 	}
+}
+
+void Renderer::DrawSkybox() {
+	glDepthMask(GL_FALSE);
+
+	BindShader(skyboxShader);
+	UpdateShaderMatrices();
+
+	quad->Draw();
+
+	glDepthMask(GL_TRUE);
+}
+
+void Renderer::DrawWater() {
+	BindShader(reflectShader);
+
+	glUniform3fv(glGetUniformLocation(reflectShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+
+	glUniform1i(glGetUniformLocation(reflectShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(reflectShader->GetProgram(), "cubeTex"), 2);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, waterTex);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+
+	Vector3 hSize = heightMap->GetHeightmapSize();
+	modelMatrix =
+		Matrix4::Translation(hSize * Vector3(0.5f, 0.12f, 0.5f)) *
+		Matrix4::Scale(hSize * 0.5f) *
+		Matrix4::Rotation(-90, Vector3(1, 0, 0));
+
+	textureMatrix =
+		Matrix4::Translation(Vector3(waterCycle, 0.0f, waterCycle)) *
+		Matrix4::Scale(Vector3(10, 10, 10)) *
+		Matrix4::Rotation(waterRotate, Vector3(0, 0, 1));
+
+	UpdateShaderMatrices();
+	quad->Draw();
 }

@@ -4,6 +4,7 @@ uniform sampler2D mountainTex;
 uniform sampler2D valleyTex;
 uniform sampler2D mountainBump;
 uniform sampler2D valleyBump;
+uniform sampler2D shadowTex;
 uniform float heightThreshold;
 uniform float transitionWidth;
 
@@ -48,7 +49,6 @@ void main(void) {
                     normalize(IN.binormal), 
                     normalize(IN.normal));
 
-    //vec4 diffuse = texture(blendedColour, IN.texCoord);
 	vec3 bumpNormal = normalize(TBN * normalize(blendedNormal * 2.0 - 1.0));
 
 	float lambert = max(dot(incident, bumpNormal), 0.0f);
@@ -59,8 +59,8 @@ void main(void) {
 	specFactor = pow(specFactor, 60.0);
 
 	vec3 surface = (blendedColour.rbg * lightColour.rgb);
-	fragColour.rgb = surface * lambert * attenuation;
-	fragColour.rgb += (lightColour.rgb * specFactor) * attenuation * 0.33;
+	fragColour.rgb = surface * attenuation * lambert;
+	fragColour.rgb += (lightColour.rgb * attenuation * specFactor) * 0.33;
 	fragColour.rgb += surface * 0.1f;
 	fragColour.a = blendedColour.a;
 }

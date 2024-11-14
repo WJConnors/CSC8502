@@ -21,6 +21,9 @@ protected:
 	void DrawNodes();
 	void DrawNode(SceneNode* n);
 	void DrawHeightMap();
+	void DrawWater();
+	void DrawSkybox();
+	
 
 	void DrawScene();
 	void DrawBlur();
@@ -34,6 +37,8 @@ protected:
 	Shader* nodeShader;
 	Shader* sceneShader;
 	Shader* processShader;
+	Shader* reflectShader;
+	Shader* skyboxShader;
 	Camera* camera;
 	GLuint mountainTex;
 	GLuint mountainBump;
@@ -44,6 +49,9 @@ protected:
 	GLuint blurDepthTex;
 	GLuint bufferColourTex[2];
 	GLuint bufferDepthTex;
+
+	GLuint cubeMap;
+	GLuint waterTex;
 
 	Frustum frameFrustum;
 
@@ -60,4 +68,7 @@ protected:
 	void DrawAnim();
 
 	Light* light;
+
+	float waterRotate;
+	float waterCycle;
 };
