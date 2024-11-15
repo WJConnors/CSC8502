@@ -9,7 +9,7 @@
 
 float repeatFactor = 5.0f;
 const int POST_PASSES = 5;
-const int LIGHT_NUM = 64;
+const int LIGHT_NUM = 128;
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"MountainHM.png");
@@ -85,7 +85,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	pointLights = new Light[LIGHT_NUM];
 	for (int i = 0; i < LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
-		l.SetPosition(Vector3(rand() % (int)dimensions.x, 0.3 * dimensions.y, rand() % (int)dimensions.z));
+		l.SetPosition(Vector3(rand() % (int)dimensions.x, 0.1 * dimensions.y, rand() % (int)dimensions.z));
 		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
 	}
@@ -253,12 +253,7 @@ void Renderer::BuildNodeLists(SceneNode* from) {
 		Vector3 dir = from->GetWorldTransform().GetPositionVector() - camera->GetPosition();
 		from->SetCameraDistance(Vector3::Dot(dir, dir));
 
-		if (from->GetColour().w < 1.0f) {
-			transparentNodeList.push_back(from);
-		}
-		else {
-			nodeList.push_back(from);
-		}
+		nodeList.push_back(from);
 	}
 	for (vector<SceneNode*>::const_iterator i = from->GetChildIteratorStart(); i != from->GetChildIteratorEnd(); ++i) {
 		BuildNodeLists((*i));
@@ -266,15 +261,11 @@ void Renderer::BuildNodeLists(SceneNode* from) {
 }
 
 void Renderer::SortNodeLists() {
-	std::sort(transparentNodeList.rbegin(), transparentNodeList.rend(), SceneNode::CompareByCameraDistance);
 	std::sort(nodeList.begin(), nodeList.end(), SceneNode::CompareByCameraDistance);
 }
 
 void Renderer::DrawNodes() {
 	for (const auto& i : nodeList) {
-		DrawNode(i);
-	}
-	for (const auto& i : transparentNodeList) {
 		DrawNode(i);
 	}
 }
@@ -392,7 +383,6 @@ void Renderer::PresentScene() {
 }
 
 void Renderer::ClearNodeLists() {
-	transparentNodeList.clear();
 	nodeList.clear();
 }
 

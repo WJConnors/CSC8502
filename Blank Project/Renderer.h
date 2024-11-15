@@ -16,6 +16,8 @@ public:
 	 void UpdateScene(float msec)	override;
 	 void SwitchScene() { winter = !winter; }
 	 Vector3 GetCameraLocation() { return camera->GetPosition(); }
+	 float GetCameraPitch() { return camera->GetPitch(); }
+	 float GetCameraYaw() { return camera->GetYaw(); }
 protected:
 	void BuildNodeLists(SceneNode* from);
 	void SortNodeLists();
@@ -77,7 +79,6 @@ protected:
 
 	Frustum frameFrustum;
 
-	vector<SceneNode*> transparentNodeList;
 	vector<SceneNode*> nodeList;
 
 	Mesh* dragonMesh;

@@ -24,6 +24,11 @@ int main()	{
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
 			Shader::ReloadAllShaders();
 		}
+		if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_V)) {
+			std::cout << renderer.GetCameraLocation() << std::endl;
+			std::cout << "pitch: " << renderer.GetCameraPitch() << std::endl;
+			std::cout << "yaw: " << renderer.GetCameraYaw() << std::endl;
+		}
 	}
 	return 0;
 }
