@@ -16,7 +16,8 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	camera = new Camera(-40, 270, Vector3());
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5f, 0.3f, 0.5f));
-	light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
+	//light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
+	light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(1, 1, 1, 1), dimensions.x * 0.5f);
 	quad = Mesh::GenerateQuad();
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 
@@ -45,15 +46,11 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
 	mountainBump = SOIL_load_OGL_texture(TEXTUREDIR"snow2bump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	if (mountainBump == 0) {
-		std::cerr << "Failed to load mountain bump map: " << SOIL_last_result() << std::endl;
-	}
+	if (!mountainBump) return;
 	valleyTex = SOIL_load_OGL_texture(TEXTUREDIR"snow4.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!valleyTex) return;
 	valleyBump = SOIL_load_OGL_texture(TEXTUREDIR"snow4bump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	if (valleyBump == 0) {
-		std::cerr << "Failed to load valley bump map: " << SOIL_last_result() << std::endl;
-	}
+	if (!valleyBump) return;
 
 	waterTex = SOIL_load_OGL_texture(TEXTUREDIR "water.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
@@ -63,11 +60,30 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 		TEXTUREDIR "NLSouth.png", TEXTUREDIR "NLNorth.png",
 		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
+	mountainTexSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockMountain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!mountainTexSummer) return;
+	mountainBumpSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockMountainBump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!mountainBumpSummer) return;
+	valleyTexSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockValley.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!valleyTexSummer) return;
+	valleyBumpSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockValleyBump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	if (!valleyBumpSummer) return;
+
 	SetTextureRepeating(mountainTex, true);
 	SetTextureRepeating(mountainBump, true);
 	SetTextureRepeating(valleyTex, true);
 	SetTextureRepeating(valleyBump, true);
+	SetTextureRepeating(mountainTexSummer, true);
+	SetTextureRepeating(mountainBumpSummer, true);
+	SetTextureRepeating(valleyTexSummer, true);
+	SetTextureRepeating(valleyBumpSummer, true);
 	SetTextureRepeating(waterTex, true);
+
+	cubeMapSummer = SOIL_load_OGL_cubemap(
+		TEXTUREDIR "MountainWest.png", TEXTUREDIR "MountainEast.png",
+		TEXTUREDIR "MountainUp.png", TEXTUREDIR "MountainDown.png",
+		TEXTUREDIR "MountainSouth.png", TEXTUREDIR "MountainNorth.png",
+		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
 	pointLights = new Light[LIGHT_NUM];
 	for (int i = 0; i < LIGHT_NUM; ++i) {
@@ -237,16 +253,19 @@ void Renderer::DrawScene() {
 	DrawSkybox();
 
 	DrawHeightMap();
-	DrawPointLights();
-	CombineBuffers();
 
-	//DrawWater();
-
-	DrawBlur();
+	if (winter) {
+		DrawPointLights();
+		CombineBuffers();
+		DrawBlur();
+	}
+	else {
+		//DrawWater();
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 
-	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	/*projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	viewMatrix = camera->BuildViewMatrix();
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
@@ -259,7 +278,7 @@ void Renderer::DrawScene() {
 	DrawNodes();
 	ClearNodeLists();
 
-	DrawAnim();
+	DrawAnim();*/
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -407,35 +426,43 @@ void Renderer::GenerateScreenTexture(GLuint& into, bool depth) {
 }
 
 void Renderer::DrawHeightMap() {
-	glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	BindShader(gBufferShader);
+	Shader* curShader;
+	if (winter) {
+		glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		BindShader(gBufferShader);
+		curShader = gBufferShader;
+	}
+	else {
+		glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+		BindShader(landscapeShader);
+		curShader = landscapeShader;
+		glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+		SetShaderLight(*light);
+	}
 
 	textureMatrix = Matrix4::Scale(Vector3(repeatFactor, repeatFactor, 1.0f));
 	modelMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "mountainTex"), 0);
+	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "mountainTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, mountainTex);
+	glBindTexture(GL_TEXTURE_2D, winter ? mountainTex : mountainTexSummer);
 
-	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "valleyTex"), 1);
+	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "valleyTex"), 1);
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, valleyTex);
+	glBindTexture(GL_TEXTURE_2D, winter ? valleyTex : valleyTexSummer);
 
-	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "mountainBump"), 2);
+	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "mountainBump"), 2);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, mountainBump);
+	glBindTexture(GL_TEXTURE_2D, winter ? mountainBump : mountainBumpSummer);
 
-	glUniform1i(glGetUniformLocation(gBufferShader->GetProgram(), "valleyBump"), 3);
+	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "valleyBump"), 3);
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_2D, valleyBump);
+	glBindTexture(GL_TEXTURE_2D, winter ? valleyBump : valleyBumpSummer);
 
-	glUniform1f(glGetUniformLocation(gBufferShader->GetProgram(), "heightThreshold"), 50.0f);
-	glUniform1f(glGetUniformLocation(gBufferShader->GetProgram(), "transitionWidth"), 10.0f);
-	//glUniform3fv(glGetUniformLocation(landscapeShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
-	
-	//SetShaderLight(*light);
+	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "heightThreshold"), 50.0f);
+	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "transitionWidth"), 10.0f);
 
 	heightMap->Draw();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -473,6 +500,17 @@ void Renderer::DrawSkybox() {
 	BindShader(skyboxShader);
 	UpdateShaderMatrices();
 
+	glUniform1i(glGetUniformLocation(skyboxShader->GetProgram(), "cubeTex"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	if (winter) {
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+		glUniform1i(glGetUniformLocation(skyboxShader->GetProgram(), "cubeTex"), 0);
+	}
+	else {
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapSummer);
+		glUniform1i(glGetUniformLocation(skyboxShader->GetProgram(), "cubeTex"), 0);
+	}
+
 	quad->Draw();
 
 	glDepthMask(GL_TRUE);
@@ -490,7 +528,7 @@ void Renderer::DrawWater() {
 	glBindTexture(GL_TEXTURE_2D, waterTex);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapSummer);
 
 	Vector3 hSize = heightMap->GetHeightmapSize();
 	modelMatrix =

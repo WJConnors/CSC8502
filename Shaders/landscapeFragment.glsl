@@ -58,8 +58,8 @@ void main(void) {
 	specFactor = pow(specFactor, 60.0);
 
 	vec3 surface = (blendedColour.rbg * lightColour.rgb);
-	fragColour.rgb = surface * attenuation * lambert;
-	fragColour.rgb += (lightColour.rgb * attenuation * specFactor) * 0.33;
+	fragColour.rgb = surface * lambert * attenuation;
+	fragColour.rgb += (lightColour.rgb * specFactor) * attenuation * 0.33;
 	fragColour.rgb += surface * 0.1f;
 	fragColour.a = blendedColour.a;
 }

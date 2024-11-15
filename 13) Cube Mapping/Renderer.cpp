@@ -66,7 +66,7 @@ void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawSkybox();
 	DrawHeightMap();
-	DrawWater();
+	//DrawWater();
 }
 
 void Renderer::DrawSkybox() {

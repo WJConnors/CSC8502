@@ -17,6 +17,7 @@ int main()	{
 	w.ShowOSPointer(false);
 
 	while(w.UpdateWindow()  && !Window::GetKeyboard()->KeyDown(KEYBOARD_ESCAPE)){
+		if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_1)) renderer.SwitchScene();
 		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
 		renderer.RenderScene();
 		renderer.SwapBuffers();

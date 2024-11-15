@@ -14,6 +14,7 @@ public:
 	 ~Renderer(void);
 	 void RenderScene()				override;
 	 void UpdateScene(float msec)	override;
+	 void SwitchScene() { winter = !winter; }
 protected:
 	void BuildNodeLists(SceneNode* from);
 	void SortNodeLists();
@@ -68,6 +69,12 @@ protected:
 
 	GLuint cubeMap;
 	GLuint waterTex;
+
+	GLuint cubeMapSummer;
+	GLuint mountainTexSummer;
+	GLuint mountainBumpSummer;
+	GLuint valleyTexSummer;
+	GLuint valleyBumpSummer;
 
 	Frustum frameFrustum;
 
