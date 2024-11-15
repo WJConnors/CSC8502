@@ -402,7 +402,7 @@ void Renderer::DrawScene() {
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
-	DrawAnim();
+	if (winter) DrawAnim();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
