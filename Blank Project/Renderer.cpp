@@ -42,6 +42,9 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	skyboxShader = new Shader("skyboxVertex.glsl", "skyboxFragment.glsl");
 	if (!skyboxShader->LoadSuccess()) return;
 
+	transitionShader = new Shader("TexturedVertex.glsl", "transitionFrag.glsl");
+	if (!transitionShader->LoadSuccess()) return;
+
 
 	mountainTex = SOIL_load_OGL_texture(TEXTUREDIR"snow2.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!mountainTex) return;
@@ -125,6 +128,8 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	dragFrameTime = 0.0f;
 	curBearFrame = 0;
 	bearFrameTime = 0;
+	sceneTime = 0;
+	transitionTime = 0.0f;
 
 	root = new SceneNode();
 
@@ -184,11 +189,27 @@ Renderer::~Renderer(void)	{
 }
 
 void Renderer::UpdateScene(float dt) {
+	if (sceneStart == 0) sceneStart = dt;
 	camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
 
 	waterRotate += dt * 2.0f;
 	waterCycle += dt * 0.25f;
+	sceneTime += dt;
+	if (sceneStart == 0) sceneStart = sceneTime;
+	std::cout << sceneTime << std::endl;
+
+	if (sceneTime > sceneStart + 5.0f && sceneTime < sceneStart + 10.0f) {
+		std::cout << "transitioning" << std::endl;
+		transitioning = true;
+		transitionTime += dt;
+		if (transitionTime > 2.5f && !hasTransitioned) {
+			winter = !winter;
+		}
+	}
+	else {
+		transitioning = false;
+	}
 
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
@@ -332,15 +353,20 @@ void Renderer::PresentScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	BindShader(sceneShader);
+	Shader* curShader = transitioning ? transitionShader : sceneShader;
+	BindShader(curShader);
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
+	if (transitioning) {
+		glUniform1f(glGetUniformLocation(curShader->GetProgram(), "transitionTime"), transitionTime);
+	}
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
-	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "diffuseTex"), 0);
 
 	quad->Draw();
 }

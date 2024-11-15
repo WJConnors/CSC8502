@@ -1,8 +1,8 @@
 #pragma once
 #include "../NCLGL/OGLRenderer.h"
 #include "../nclgl/Frustum.h"
+#include "../nclgl/Camera.h"
 class HeightMap;
-class Camera;
 class SceneNode;
 class MeshAnimation;
 class MeshMaterial;
@@ -15,6 +15,7 @@ public:
 	 void RenderScene()				override;
 	 void UpdateScene(float msec)	override;
 	 void SwitchScene() { winter = !winter; }
+	 Vector3 GetCameraLocation() { return camera->GetPosition(); }
 protected:
 	void BuildNodeLists(SceneNode* from);
 	void SortNodeLists();
@@ -100,4 +101,11 @@ protected:
 	float waterCycle;
 
 	bool winter;
+
+	bool transitioning = false;
+	float sceneTime;
+	float transitionTime;
+	float sceneStart = 0;
+	bool hasTransitioned = false;
+	Shader* transitionShader;
 };
