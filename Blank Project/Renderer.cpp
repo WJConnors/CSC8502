@@ -60,10 +60,6 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 		TEXTUREDIR "NLSouth.png", TEXTUREDIR "NLNorth.png",
 		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
-	mountainTexSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockMountain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	if (!mountainTexSummer) return;
-	mountainBumpSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockMountainBump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	if (!mountainBumpSummer) return;
 	valleyTexSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockValley.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	if (!valleyTexSummer) return;
 	valleyBumpSummer = SOIL_load_OGL_texture(TEXTUREDIR"rockValleyBump.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -73,8 +69,6 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	SetTextureRepeating(mountainBump, true);
 	SetTextureRepeating(valleyTex, true);
 	SetTextureRepeating(valleyBump, true);
-	SetTextureRepeating(mountainTexSummer, true);
-	SetTextureRepeating(mountainBumpSummer, true);
 	SetTextureRepeating(valleyTexSummer, true);
 	SetTextureRepeating(valleyBumpSummer, true);
 	SetTextureRepeating(waterTex, true);
@@ -102,20 +96,35 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 
 	GenBuffers();
 
-	animMesh = Mesh::LoadFromMeshFile("Dragon.msh");
-	anim = new MeshAnimation("Dragon.anm");
-	material = new MeshMaterial("Dragon.mat");
+	dragonMesh = Mesh::LoadFromMeshFile("Dragon.msh");
+	dragonAnim = new MeshAnimation("Dragon.anm");
+	dragonMaterial = new MeshMaterial("Dragon.mat");
 
-	for (int i = 0; i < animMesh->GetSubMeshCount(); ++i) {
-		const MeshMaterialEntry* matEntry = material->GetMaterialForLayer(i);
+	for (int i = 0; i < dragonMesh->GetSubMeshCount(); ++i) {
+		const MeshMaterialEntry* matEntry = dragonMaterial->GetMaterialForLayer(i);
 		const string* filename = nullptr;
 		matEntry->GetEntry("Diffuse", &filename);
 		string path = TEXTUREDIR + *filename;
 		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-		matTextures.emplace_back(texID);
+		dragonTextures.emplace_back(texID);
 	}
-	currentFrame = 0;
-	frameTime = 0.0f;
+
+	bearMesh = Mesh::LoadFromMeshFile("Bear.msh");
+	bearAnim = new MeshAnimation("Bear.anm");
+	bearMaterial = new MeshMaterial("Bear.mat");
+
+	for (int i = 0; i < bearMesh->GetSubMeshCount(); ++i) {
+		const MeshMaterialEntry* matEntry = bearMaterial->GetMaterialForLayer(i);
+		const string* filename = nullptr;
+		matEntry->GetEntry("Diffuse", &filename);
+		string path = TEXTUREDIR + *filename;
+		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
+		bearTextures.emplace_back(texID);
+	}
+	curDragFrame = 0;
+	dragFrameTime = 0.0f;
+	curBearFrame = 0;
+	bearFrameTime = 0;
 
 	root = new SceneNode();
 
@@ -129,7 +138,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	glCullFace(GL_BACK);
 	waterRotate = 0.0f;
 	waterCycle = 0.0f;
-	winter = false;
+	winter = true;
 	init = true;
 }
 Renderer::~Renderer(void)	{
@@ -144,9 +153,9 @@ Renderer::~Renderer(void)	{
 	glDeleteFramebuffers(1, &bufferFBO);
 	glDeleteFramebuffers(1, &blurFBO);
 
-	delete animMesh;
-	delete anim;
-	delete material;
+	delete dragonMesh;
+	delete dragonAnim;
+	delete dragonMaterial;
 
 	delete light;
 
@@ -183,10 +192,16 @@ void Renderer::UpdateScene(float dt) {
 
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
-	frameTime -= dt;
-	while (frameTime < 0.0f) {
-		currentFrame = (currentFrame + 1) % anim->GetFrameCount();
-		frameTime += 1.0f / anim->GetFrameRate();
+	dragFrameTime -= dt;
+	while (dragFrameTime < 0.0f) {
+		curDragFrame = (curDragFrame + 1) % dragonAnim->GetFrameCount();
+		dragFrameTime += 1.0f / dragonAnim->GetFrameRate();
+	}
+
+	bearFrameTime -= dt;
+	while (bearFrameTime < 0.0f) {
+		curBearFrame = (curBearFrame + 1) % bearAnim->GetFrameCount();
+		bearFrameTime += 1.0f / bearAnim->GetFrameRate();
 	}
 
 	root->Update(dt);
@@ -260,12 +275,12 @@ void Renderer::DrawScene() {
 		DrawBlur();
 	}
 	else {
-		//DrawWater();
+		DrawWater();
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 
-	/*projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	viewMatrix = camera->BuildViewMatrix();
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
@@ -278,7 +293,7 @@ void Renderer::DrawScene() {
 	DrawNodes();
 	ClearNodeLists();
 
-	DrawAnim();*/
+	DrawAnim();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -447,7 +462,7 @@ void Renderer::DrawHeightMap() {
 
 	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "mountainTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, winter ? mountainTex : mountainTexSummer);
+	glBindTexture(GL_TEXTURE_2D, winter ? mountainTex : valleyTexSummer);
 
 	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "valleyTex"), 1);
 	glActiveTexture(GL_TEXTURE1);
@@ -455,13 +470,13 @@ void Renderer::DrawHeightMap() {
 
 	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "mountainBump"), 2);
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, winter ? mountainBump : mountainBumpSummer);
+	glBindTexture(GL_TEXTURE_2D, winter ? mountainBump : valleyBumpSummer);
 
 	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "valleyBump"), 3);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, winter ? valleyBump : valleyBumpSummer);
 
-	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "heightThreshold"), 50.0f);
+	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "heightThreshold"), 200.0f);
 	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "transitionWidth"), 10.0f);
 
 	heightMap->Draw();
@@ -470,27 +485,44 @@ void Renderer::DrawHeightMap() {
 
 void Renderer::DrawAnim() {
 	BindShader(animShader);
+	glClear(GL_DEPTH_BUFFER_BIT);
 	Vector3 dimensions = heightMap->GetHeightmapSize();
 	Vector3 temp = (dimensions * Vector3(0.5, 0.2, 0.5));
 	modelMatrix = Matrix4::Translation(temp);
 	UpdateShaderMatrices();
 	glUniform1i(glGetUniformLocation(animShader->GetProgram(), "diffuseTex"), 0);
 	vector<Matrix4> frameMatrices;
+	Mesh* curMesh;
+	MeshAnimation* curAnim;
+	MeshMaterial* curMat;
+	int curFrame;
+	if (winter) {
+		curMesh = dragonMesh;
+		curAnim = dragonAnim;
+		curMat = dragonMaterial;
+		curFrame = curDragFrame;
+	}
+	else {
+		curMesh = bearMesh;
+		curAnim = bearAnim;
+		curMat = bearMaterial;
+		curFrame = curBearFrame;
+	}
 
-	const Matrix4* invBindPose = animMesh->GetInverseBindPose();
-	const Matrix4* frameData = anim->GetJointData(currentFrame);
+	const Matrix4* invBindPose = curMesh->GetInverseBindPose();
+	const Matrix4* frameData = curAnim->GetJointData(curFrame);
 
-	for (unsigned int i = 0; i < animMesh->GetJointCount(); ++i) {
+	for (unsigned int i = 0; i < curMesh->GetJointCount(); ++i) {
 		frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
 	}
 
 	int j = glGetUniformLocation(animShader->GetProgram(), "joints");
 	glUniformMatrix4fv(j, frameMatrices.size(), false, (float*)frameMatrices.data());
 
-	for (int i = 0; i < animMesh->GetSubMeshCount(); ++i) {
+	for (int i = 0; i < curMesh->GetSubMeshCount(); ++i) {
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, matTextures[i]);
-		animMesh->DrawSubMesh(i);
+		glBindTexture(GL_TEXTURE_2D, winter ? dragonTextures[i] : bearTextures[i]);
+		curMesh->DrawSubMesh(i);
 	}
 }
 
@@ -517,6 +549,7 @@ void Renderer::DrawSkybox() {
 }
 
 void Renderer::DrawWater() {
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	BindShader(reflectShader);
 
 	glUniform3fv(glGetUniformLocation(reflectShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());

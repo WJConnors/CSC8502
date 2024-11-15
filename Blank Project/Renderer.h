@@ -71,8 +71,6 @@ protected:
 	GLuint waterTex;
 
 	GLuint cubeMapSummer;
-	GLuint mountainTexSummer;
-	GLuint mountainBumpSummer;
 	GLuint valleyTexSummer;
 	GLuint valleyBumpSummer;
 
@@ -81,12 +79,18 @@ protected:
 	vector<SceneNode*> transparentNodeList;
 	vector<SceneNode*> nodeList;
 
-	Mesh* animMesh;
-	MeshAnimation* anim;
-	MeshMaterial* material;
-	vector<GLuint> matTextures;
-	int currentFrame;
-	float frameTime;
+	Mesh* dragonMesh;
+	MeshAnimation* dragonAnim;
+	MeshMaterial* dragonMaterial;
+	vector<GLuint> dragonTextures;
+	int curDragFrame;
+	float dragFrameTime;
+	Mesh* bearMesh;
+	MeshAnimation* bearAnim;
+	MeshMaterial* bearMaterial;
+	vector<GLuint> bearTextures;
+	int curBearFrame;
+	float bearFrameTime;
 	Shader* animShader;
 	void DrawAnim();
 

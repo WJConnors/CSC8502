@@ -13,9 +13,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	if (!landscapeShader->LoadSuccess()) {
 		return;
 	}
-	mesh = Mesh::LoadFromMeshFile("Dragon.msh");
-	anim = new MeshAnimation("Dragon.anm");
-	material = new MeshMaterial("Dragon.mat");
+	mesh = Mesh::LoadFromMeshFile("Bear.msh");
+	anim = new MeshAnimation("Bear.anm");
+	material = new MeshMaterial("Bear.mat");
 	//mesh = Mesh::LoadFromMeshFile("Role_T.msh");
 	//anim = new MeshAnimation("Role_T.anm");
 	//material = new MeshMaterial("Role_T.mat");
