@@ -18,6 +18,7 @@ public:
 	 Vector3 GetCameraLocation() { return camera->GetPosition(); }
 	 float GetCameraPitch() { return camera->GetPitch(); }
 	 float GetCameraYaw() { return camera->GetYaw(); }
+	 void EndCameraRail() { camEndedManually = true; }
 protected:
 	void BuildNodeLists(SceneNode* from);
 	void SortNodeLists();
@@ -117,4 +118,15 @@ protected:
 	const int totalMoveTime = 10;
 	float curMoveTime;
 	float Clamp(float value, float min, float max) { return (value < min) ? min : (value > max) ? max : value; }
+
+	vector<Vector3> cameraPositions;
+	vector<Vector2> cameraRotations;
+	int numCameraPositions;
+	int cameraPosition;
+	float camMoveTime;
+	float camPeriod;
+	Vector3 InterpolateVector(const Vector3& vector1, const Vector3& vector2, float curMoveTime, float totalMoveTime);
+	float InterpolateFloat(const float float1, const float float2, float curMoveTime, float totalMoveTime);
+	float camRailBegun = false;
+	bool camEndedManually = false;
 };

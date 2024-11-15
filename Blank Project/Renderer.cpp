@@ -147,6 +147,40 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 
 	curMoveTime = 0;
 
+	cameraPositions.emplace_back(Vector3(-394.879, 414.266, 1991.06));
+	cameraRotations.emplace_back(Vector2(8.57997, 270.83));
+	cameraPositions.emplace_back(Vector3(412.497, 414.266, 1990.4));
+	cameraRotations.emplace_back(Vector2(-11.51, 269.71));
+	cameraPositions.emplace_back(Vector3(638.709, 291.988, 940.589));
+	cameraRotations.emplace_back(Vector2(-9.97003, 248.2871));
+	cameraPositions.emplace_back(Vector3(3101.56, 189.129, 800.311));
+	cameraRotations.emplace_back(Vector2(-12.84, 146.017));
+	cameraPositions.emplace_back(Vector3(3021.49, 80.5835, 875.656));
+	cameraRotations.emplace_back(Vector2(-0.530248, 165.069));
+	cameraPositions.emplace_back(Vector3(3022.17, 80.5835, 1198.05));
+	cameraRotations.emplace_back(Vector2(-7.86976, 179.419));
+
+	cameraPositions.emplace_back(Vector3(3093.66, 80.5835, 1085.27));
+	cameraRotations.emplace_back(Vector2(-1.00783, 124.114));
+	cameraPositions.emplace_back(Vector3(2727.43, 38.8582, 1380.45));
+	cameraRotations.emplace_back(Vector2(-8.21784, 68.1846));
+	cameraPositions.emplace_back(Vector3(2407.07, 38.8582, 1197.43));
+	cameraRotations.emplace_back(Vector2(-7.37784, 60.3447));
+	cameraPositions.emplace_back(Vector3(2360, 38.8582, 1226.55));
+	cameraRotations.emplace_back(Vector2(1.93216, 170.385));
+	cameraPositions.emplace_back(Vector3(2155.89, 433.61, 2321.01));
+	cameraRotations.emplace_back(Vector2(-19.0678, 58.5947));
+	cameraPositions.emplace_back(Vector3(951.816, 1057.62, 3259.86));
+	cameraRotations.emplace_back(Vector2(-34.7477, 322.622));
+
+	numCameraPositions = cameraPositions.size();
+	cameraPosition = 0;
+	camera->SetPosition(cameraPositions[cameraPosition]);
+	camera->SetPitch(cameraRotations[cameraPosition].x);
+	camera->SetYaw(cameraRotations[cameraPosition].y);
+	camMoveTime = 0;
+	camPeriod = 5;
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -203,7 +237,28 @@ Renderer::~Renderer(void)	{
 void Renderer::UpdateScene(float dt) {
 
 	if (sceneStart == 0) sceneStart = dt;
-	camera->UpdateCamera(dt);
+	if (cameraPosition == numCameraPositions - 1 || camEndedManually) {
+		camera->UpdateCamera(dt);
+	}
+	else {
+		if (!camRailBegun) {
+			camRailBegun = true;
+		}
+		else {
+			Vector3 curStart = cameraPositions[cameraPosition];
+			Vector3 curEnd = cameraPositions[cameraPosition + 1];
+			camera->SetPosition(InterpolateVector(curStart, curEnd, camMoveTime, camPeriod));
+			Vector2 rotStart = cameraRotations[cameraPosition];
+			Vector2 rotEnd = cameraRotations[cameraPosition + 1];
+			camera->SetPitch(InterpolateFloat(rotStart.x, rotEnd.x, camMoveTime, camPeriod));
+			camera->SetYaw(InterpolateFloat(rotStart.y, rotEnd.y, camMoveTime, camPeriod));
+			camMoveTime += dt;
+			if (camMoveTime >= camPeriod) {
+				camMoveTime -= camPeriod;
+				cameraPosition++;
+			}
+		}
+	}
 	viewMatrix = camera->BuildViewMatrix();
 
 	waterRotate += dt * 2.0f;
@@ -211,7 +266,7 @@ void Renderer::UpdateScene(float dt) {
 	sceneTime += dt;
 	if (sceneStart == 0) sceneStart = sceneTime;
 
-	if (sceneTime > sceneStart + 5.0f && sceneTime < sceneStart + 10.0f) {
+	if (sceneTime > sceneStart + 25.0f && sceneTime < sceneStart + 30.0f) {
 		transitioning = true;
 		transitionTime += dt;
 		if (transitionTime > 2.5f && !hasTransitioned) {
@@ -512,7 +567,7 @@ void Renderer::DrawHeightMap() {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, winter ? valleyBump : valleyBumpSummer);
 
-	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "heightThreshold"), 200.0f);
+	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "heightThreshold"), 60.0f);
 	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "transitionWidth"), 10.0f);
 
 	heightMap->Draw();
@@ -522,7 +577,6 @@ void Renderer::DrawHeightMap() {
 void Renderer::DrawAnim() {
 	BindShader(animShader);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	float t = curMoveTime / totalMoveTime;
 	Vector3 pos1;
 	Vector3 pos2;
 	if (winter) {
@@ -533,8 +587,7 @@ void Renderer::DrawAnim() {
 		pos1 = bearLocations[bearLocation];
 		pos2 = bearLocation == 1 ? bearLocations[0] : bearLocations[bearLocation + 1];
 	}
-	t = Clamp(t, 0.0f, 1.0f);
-	Vector3 interpolatedVector = pos1 * (1.0f - t) + pos2 * t;
+	Vector3 interpolatedVector = InterpolateVector(pos1, pos2, curMoveTime, totalMoveTime);
 	modelMatrix = Matrix4::Translation(interpolatedVector);
 	UpdateShaderMatrices();
 	glUniform1i(glGetUniformLocation(animShader->GetProgram(), "diffuseTex"), 0);
@@ -692,4 +745,16 @@ void Renderer::CombineBuffers() {
 
 	quad->Draw();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+Vector3 Renderer::InterpolateVector(const Vector3& vector1, const Vector3& vector2, float curMoveTime, float totalMoveTime) {
+	float t = curMoveTime / totalMoveTime;     // Calculate interpolation factor
+	t = Clamp(t, 0.0f, 1.0f);            // Clamp t to [0.0, 1.0]
+	return vector1 * (1.0f - t) + vector2 * t; // Perform interpolation
+}
+
+float Renderer::InterpolateFloat(const float float1, const float float2, float curMoveTime, float totalMoveTime) {
+	float t = curMoveTime / totalMoveTime;
+	t = Clamp(t, 0.0f, 1.0f);
+	return float1 * (1.0f - t) + float2 * t;
 }

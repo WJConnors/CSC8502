@@ -25,9 +25,12 @@ int main()	{
 			Shader::ReloadAllShaders();
 		}
 		if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_V)) {
-			std::cout << renderer.GetCameraLocation() << std::endl;
+			std::cout << renderer.GetCameraLocation();
 			std::cout << "pitch: " << renderer.GetCameraPitch() << std::endl;
 			std::cout << "yaw: " << renderer.GetCameraYaw() << std::endl;
+		}
+		if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_B)) {
+			renderer.EndCameraRail();
 		}
 	}
 	return 0;
