@@ -20,10 +20,6 @@ public:
 	 float GetCameraYaw() { return camera->GetYaw(); }
 	 void EndCameraRail() { camEndedManually = true; }
 protected:
-	void BuildNodeLists(SceneNode* from);
-	void SortNodeLists();
-	void ClearNodeLists();
-	void DrawNodes();
 	void DrawNode(SceneNode* n);
 	void DrawHeightMap();
 	void DrawWater();
@@ -129,4 +125,7 @@ protected:
 	float InterpolateFloat(const float float1, const float float2, float curMoveTime, float totalMoveTime);
 	float camRailBegun = false;
 	bool camEndedManually = false;
+
+	float snowFallSpeed = -10.0f;
+	Vector3 dimensions;
 };

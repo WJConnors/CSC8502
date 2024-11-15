@@ -9,12 +9,14 @@
 
 float repeatFactor = 5.0f;
 const int POST_PASSES = 5;
-const int LIGHT_NUM = 128;
+const int LIGHT_NUM = 256;
+const int SNOW_NUM = 1024;
+const int HEIGHTMULTIPLIER = 5;
 
 Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	heightMap = new HeightMap(TEXTUREDIR"MountainHM.png");
 	camera = new Camera(-40, 270, Vector3());
-	Vector3 dimensions = heightMap->GetHeightmapSize();
+	dimensions = heightMap->GetHeightmapSize();
 	camera->SetPosition(dimensions * Vector3(0.5f, 0.3f, 0.5f));
 	//light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(0.373f,0.722f,0.741f,1), dimensions.x * 0.5f);
 	light = new Light(dimensions * Vector3(0.5f, 1.5f, 0.5f), Vector4(1, 1, 1, 1), dimensions.x * 0.5f);
@@ -85,7 +87,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	pointLights = new Light[LIGHT_NUM];
 	for (int i = 0; i < LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
-		l.SetPosition(Vector3(rand() % (int)dimensions.x, 0.1 * dimensions.y, rand() % (int)dimensions.z));
+		l.SetPosition(Vector3(rand() % (int)dimensions.x, rand() % (int)dimensions.y * HEIGHTMULTIPLIER, rand() % (int)dimensions.z));
 		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
 	}
@@ -132,6 +134,17 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	transitionTime = 0.0f;
 
 	root = new SceneNode();
+	root->SetTransform(Matrix4::Translation(Vector3(0,0,0)));
+
+	for (int i = 0; i < SNOW_NUM; i++) {
+		SceneNode* snow = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+		snow->SetModelScale(Vector3(2.0f, 2.0f, 2.0f));
+		snow->SetBoundingRadius(2.0f);
+		snow->SetTransform(Matrix4::Translation(
+			Vector3(rand() % (int)dimensions.x, rand() % (int)dimensions.y * HEIGHTMULTIPLIER, rand() % (int)dimensions.z)));
+		snow->SetTexture(mountainTex);
+		root->AddChild(snow);
+	}
 
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 
@@ -300,42 +313,30 @@ void Renderer::UpdateScene(float dt) {
 		bearLocation = (bearLocation + 1) % 2;
 	}
 
+	for (vector < SceneNode* >::const_iterator
+		i = root->GetChildIteratorStart();
+		i != root->GetChildIteratorEnd(); ++i) {
+		(*i)->SetTransform((*i)->GetTransform() * Matrix4::Translation(Vector3(0, snowFallSpeed * dt, 0)));
+		Vector3 curTransform = (*i)->GetTransform().GetPositionVector();
+		if (curTransform.y < 0) {
+			(*i)->SetTransform((*i)->GetTransform() * Matrix4::Translation(Vector3(curTransform.x, dimensions.y * HEIGHTMULTIPLIER, curTransform.y)));
+		}
+	}
 	root->Update(dt);
-}
-
-void Renderer::BuildNodeLists(SceneNode* from) {
-	if (frameFrustum.InsideFrustum(*from)) {
-		Vector3 dir = from->GetWorldTransform().GetPositionVector() - camera->GetPosition();
-		from->SetCameraDistance(Vector3::Dot(dir, dir));
-
-		nodeList.push_back(from);
-	}
-	for (vector<SceneNode*>::const_iterator i = from->GetChildIteratorStart(); i != from->GetChildIteratorEnd(); ++i) {
-		BuildNodeLists((*i));
-	}
-}
-
-void Renderer::SortNodeLists() {
-	std::sort(nodeList.begin(), nodeList.end(), SceneNode::CompareByCameraDistance);
-}
-
-void Renderer::DrawNodes() {
-	for (const auto& i : nodeList) {
-		DrawNode(i);
-	}
 }
 
 void Renderer::DrawNode(SceneNode* n) {
 	if (n->GetMesh()) {
 		Matrix4 model = n->GetWorldTransform() *
 			Matrix4::Scale(n->GetModelScale());
-		glUniformMatrix4fv(glGetUniformLocation(nodeShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-		glUniform4fv(glGetUniformLocation(nodeShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
-		GLuint texture = n->GetTexture();
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "useTexture"), texture);
+		glUniformMatrix4fv(glGetUniformLocation(gBufferShader->GetProgram(),"modelMatrix"), 1, false, model.values);
+
 		n->Draw(*this);
+	}
+	for (vector < SceneNode* >::const_iterator
+		i = n->GetChildIteratorStart();
+		i != n->GetChildIteratorEnd(); ++i) {
+		DrawNode(*i);
 	}
 }
 
@@ -356,7 +357,11 @@ void Renderer::DrawScene() {
 
 	DrawHeightMap();
 
+
+
 	if (winter) {
+		DrawNode(root);
+
 		DrawPointLights();
 		CombineBuffers();
 		DrawBlur();
@@ -371,14 +376,6 @@ void Renderer::DrawScene() {
 	viewMatrix = camera->BuildViewMatrix();
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
-
-	BuildNodeLists(root);
-	SortNodeLists();
-	BindShader(nodeShader);
-	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(nodeShader->GetProgram(), "diffuseTex"), 0);
-	DrawNodes();
-	ClearNodeLists();
 
 	DrawAnim();
 
@@ -435,10 +432,6 @@ void Renderer::PresentScene() {
 	glUniform1i(glGetUniformLocation(curShader->GetProgram(), "diffuseTex"), 0);
 
 	quad->Draw();
-}
-
-void Renderer::ClearNodeLists() {
-	nodeList.clear();
 }
 
 void Renderer::GenBuffers() {
@@ -571,7 +564,6 @@ void Renderer::DrawHeightMap() {
 	glUniform1f(glGetUniformLocation(curShader->GetProgram(), "transitionWidth"), 10.0f);
 
 	heightMap->Draw();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer::DrawAnim() {
