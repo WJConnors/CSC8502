@@ -24,7 +24,6 @@ int main()	{
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
 			Shader::ReloadAllShaders();
 		}
-		std::cout << renderer.GetCameraLocation() << std::endl;
 	}
 	return 0;
 }

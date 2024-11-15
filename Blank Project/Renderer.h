@@ -108,4 +108,12 @@ protected:
 	float sceneStart = 0;
 	bool hasTransitioned = false;
 	Shader* transitionShader;
+
+	Vector3 dragonLocations[4];
+	int dragonLocation;
+	Vector3 bearLocations[2];
+	int bearLocation;
+	const int totalMoveTime = 10;
+	float curMoveTime;
+	float Clamp(float value, float min, float max) { return (value < min) ? min : (value > max) ? max : value; }
 };

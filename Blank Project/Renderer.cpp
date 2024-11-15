@@ -135,6 +135,18 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 
+	dragonLocations[0] = Vector3(2570, 151, 2600);
+	dragonLocations[1] = Vector3(1640, 151, 2600);
+	dragonLocations[2] = Vector3(1640, 151, 1500);
+	dragonLocations[3] = Vector3(2570, 151, 1500);
+	dragonLocation = 0;
+
+	bearLocations[0] = Vector3(2313, 20, 1144);
+	bearLocations[1] = Vector3(2655, 20, 1357);
+	bearLocation = 0;
+
+	curMoveTime = 0;
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -189,6 +201,7 @@ Renderer::~Renderer(void)	{
 }
 
 void Renderer::UpdateScene(float dt) {
+
 	if (sceneStart == 0) sceneStart = dt;
 	camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
@@ -197,14 +210,13 @@ void Renderer::UpdateScene(float dt) {
 	waterCycle += dt * 0.25f;
 	sceneTime += dt;
 	if (sceneStart == 0) sceneStart = sceneTime;
-	std::cout << sceneTime << std::endl;
 
 	if (sceneTime > sceneStart + 5.0f && sceneTime < sceneStart + 10.0f) {
-		std::cout << "transitioning" << std::endl;
 		transitioning = true;
 		transitionTime += dt;
 		if (transitionTime > 2.5f && !hasTransitioned) {
 			winter = !winter;
+			hasTransitioned = true;
 		}
 	}
 	else {
@@ -223,6 +235,14 @@ void Renderer::UpdateScene(float dt) {
 	while (bearFrameTime < 0.0f) {
 		curBearFrame = (curBearFrame + 1) % bearAnim->GetFrameCount();
 		bearFrameTime += 1.0f / bearAnim->GetFrameRate();
+	}
+
+	curMoveTime += dt;
+	if (curMoveTime >= totalMoveTime) {
+		curMoveTime -= totalMoveTime;
+		
+		dragonLocation = (dragonLocation + 1) % 4;
+		bearLocation = (bearLocation + 1) % 2;
 	}
 
 	root->Update(dt);
@@ -512,9 +532,20 @@ void Renderer::DrawHeightMap() {
 void Renderer::DrawAnim() {
 	BindShader(animShader);
 	glClear(GL_DEPTH_BUFFER_BIT);
-	Vector3 dimensions = heightMap->GetHeightmapSize();
-	Vector3 temp = (dimensions * Vector3(0.5, 0.2, 0.5));
-	modelMatrix = Matrix4::Translation(temp);
+	float t = curMoveTime / totalMoveTime;
+	Vector3 pos1;
+	Vector3 pos2;
+	if (winter) {
+		pos1 = dragonLocations[dragonLocation];
+		pos2 = dragonLocation == 3 ? dragonLocations[0] : dragonLocations[dragonLocation + 1];
+	}
+	else {
+		pos1 = bearLocations[bearLocation];
+		pos2 = bearLocation == 1 ? bearLocations[0] : bearLocations[bearLocation + 1];
+	}
+	t = Clamp(t, 0.0f, 1.0f);
+	Vector3 interpolatedVector = pos1 * (1.0f - t) + pos2 * t;
+	modelMatrix = Matrix4::Translation(interpolatedVector);
 	UpdateShaderMatrices();
 	glUniform1i(glGetUniformLocation(animShader->GetProgram(), "diffuseTex"), 0);
 	vector<Matrix4> frameMatrices;
