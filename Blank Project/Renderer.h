@@ -125,7 +125,14 @@ protected:
 	float InterpolateFloat(const float float1, const float float2, float curMoveTime, float totalMoveTime);
 	float camRailBegun = false;
 	bool camEndedManually = false;
+	bool camEnded = false;
+	bool splitScreen = false;
+	float splitScreenTime;
+	float splitScreenMaxTime = 10.0f;
 
 	float snowFallSpeed = -10.0f;
 	Vector3 dimensions;
+
+	void PresentSplitScene(bool output);
+	Shader* splitShader;
 };

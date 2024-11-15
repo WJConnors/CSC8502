@@ -98,6 +98,8 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	if (!gBufferShader->LoadSuccess() || !pointLightShader->LoadSuccess() || !combineShader->LoadSuccess()) {
 		return;
 	}
+	splitShader = new Shader("TexturedVertex.glsl", "splitFragment.glsl");
+	if (!splitShader->LoadSuccess()) return;
 
 	GenBuffers();
 
@@ -132,6 +134,7 @@ Renderer::Renderer(Window &parent) : OGLRenderer(parent)	{
 	bearFrameTime = 0;
 	sceneTime = 0;
 	transitionTime = 0.0f;
+	splitScreenTime = 0.0f;
 
 	root = new SceneNode();
 	root->SetTransform(Matrix4::Translation(Vector3(0,0,0)));
@@ -250,11 +253,11 @@ Renderer::~Renderer(void)	{
 void Renderer::UpdateScene(float dt) {
 
 	if (sceneStart == 0) sceneStart = dt;
-	if (cameraPosition == numCameraPositions - 1 || camEndedManually) {
+	if (camEnded || camEndedManually) {
 		camera->UpdateCamera(dt);
 	}
 	else {
-		if (!camRailBegun) {
+		if (!camRailBegun || splitScreen) {
 			camRailBegun = true;
 		}
 		else {
@@ -270,8 +273,20 @@ void Renderer::UpdateScene(float dt) {
 				camMoveTime -= camPeriod;
 				cameraPosition++;
 			}
+			if (cameraPosition == numCameraPositions - 1) {
+				splitScreen = true;
+			}
 		}
 	}
+
+	if (splitScreen) {
+		splitScreenTime += dt;
+		if (splitScreenTime >= splitScreenMaxTime) {
+			splitScreen = false;
+			camEnded = true;
+		}
+	}
+
 	viewMatrix = camera->BuildViewMatrix();
 
 	waterRotate += dt * 2.0f;
@@ -341,8 +356,18 @@ void Renderer::DrawNode(SceneNode* n) {
 }
 
 void Renderer::RenderScene() {
-	DrawScene();
-	PresentScene();
+	if (!splitScreen) {
+		DrawScene();
+		PresentScene();
+	}
+	else {
+		DrawScene();
+		PresentSplitScene(false);
+		winter = !winter;
+		DrawScene();
+		PresentSplitScene(true);
+		winter = !winter;
+	}
 }
 
 void Renderer::DrawScene() {
@@ -410,6 +435,24 @@ void Renderer::DrawBlur() {
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::PresentSplitScene(bool output) {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	BindShader(splitShader);
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	UpdateShaderMatrices();
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+	glUniform1i(glGetUniformLocation(splitShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(splitShader->GetProgram(), "output"), output);
+	glUniform1f(glGetUniformLocation(splitShader->GetProgram(), "width"), (float)width / 2);
+
+	quad->Draw();
 }
 
 void Renderer::PresentScene() {
