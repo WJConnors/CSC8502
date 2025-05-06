@@ -379,19 +379,16 @@ void Renderer::DrawScene() {
 	UpdateShaderMatrices();
 
 	DrawSkybox();
-
 	DrawHeightMap();
+	
+	if (winter) { //Winter scene
+		DrawNode(root); //Draw main geometry
 
-
-
-	if (winter) {
-		DrawNode(root);
-
-		DrawPointLights();
+		DrawPointLights(); //Lights drawn seperately for deferred rendering
 		CombineBuffers();
 		DrawBlur();
 	}
-	else {
+	else { //Summer Scene
 		DrawWater();
 	}
 
